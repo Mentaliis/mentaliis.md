@@ -13,7 +13,7 @@ interface Props {
   onNavigate: (path: string) => void;
   onChangeView: (view: View) => void;
   onSearch: () => void;
-  onChangeVault: () => void;
+  onOpenSettings: () => void;
 }
 
 export function Topbar({
@@ -24,7 +24,7 @@ export function Topbar({
   onNavigate,
   onChangeView,
   onSearch,
-  onChangeVault,
+  onOpenSettings,
 }: Props) {
   const segments = path ? path.split("/") : [];
 
@@ -86,8 +86,14 @@ export function Topbar({
         <button type="button" onClick={onSearch} title="Rechercher (Ctrl+K)">
           Rechercher
         </button>
-        <button type="button" onClick={onChangeVault} title="Changer de Vault">
-          Vault
+        <button
+          type="button"
+          className="topbar__gear"
+          onClick={onOpenSettings}
+          title="Parametres (Ctrl+,)"
+          aria-label="Parametres"
+        >
+          ⚙
         </button>
       </div>
     </header>

@@ -94,12 +94,50 @@
 /* -------------------------------------------------- Bande de gauche */
 
 .rail {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 210px;
   background: var(--bg-deep);
   border-right: 1px solid var(--line);
+}
+
+/* Le bord que l'on tire pour elargir la bande. Volontairement plus large que
+   le trait visible : on l'attrape sans viser au pixel. */
+.rail__grip {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  z-index: 20;
+  width: 7px;
+  cursor: col-resize;
+}
+
+.rail__grip::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 3px;
+  width: 1px;
+  content: "";
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.rail__grip:hover::after,
+.rail__grip.is-dragging::after {
+  opacity: 1;
+}
+
+/* Pendant le glissement, le curseur reste la double fleche partout. */
+body:has(.rail__grip.is-dragging) {
+  cursor: col-resize;
+}
+
+body:has(.rail__grip.is-dragging) * {
+  cursor: col-resize !important;
 }
 
 .rail__head {
@@ -992,6 +1030,199 @@
 .dialog__confirm:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ------------------------------------------------------ Parametres */
+
+.settings__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 350;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5vh 20px;
+  background: rgba(4, 8, 16, 0.66);
+  backdrop-filter: blur(5px);
+  animation: fade var(--fast) var(--ease);
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 94vw);
+  max-height: 90vh;
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 36px 90px -34px rgba(0, 0, 0, 0.95);
+  animation: dialog-in var(--slow) var(--ease);
+}
+
+.settings__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings__head h1 {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.settings__close {
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-faint);
+  border-radius: 8px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.settings__close:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.settings__body {
+  padding: 6px 24px 24px;
+  overflow-y: auto;
+}
+
+.settings__section {
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings__section:last-child {
+  border-bottom: none;
+}
+
+.settings__section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.settings__hint {
+  margin-top: 5px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-faint);
+}
+
+.settings__choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.settings__choices button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 12px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition:
+    border-color var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+.settings__choices button:hover {
+  border-color: var(--line-strong);
+}
+
+.settings__choices button.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.settings__choice-name {
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings__choice-detail {
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.settings__slider {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.settings__slider input[type="range"] {
+  flex: 1;
+  height: 4px;
+  appearance: none;
+  background: var(--line-strong);
+  border-radius: 2px;
+  outline: none;
+}
+
+.settings__slider input[type="range"]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  appearance: none;
+  cursor: grab;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.settings__slider input[type="range"]::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+.settings__value {
+  min-width: 62px;
+  font-size: 12.5px;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.settings__vault {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.settings__path {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings__action {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.settings__action:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 /* ---------------------------------------------------------- Toast */

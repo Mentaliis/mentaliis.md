@@ -126,7 +126,9 @@ Ce qui fonctionne :
   cliquable. La syntaxe ne reapparait que quand le curseur entre dans l'element.
   Le fichier sur le disque, lui, reste du markdown parfaitement ordinaire.
 - **Deux modes** : *ecriture* (par defaut) et *lecture*, qui verrouille le texte
-  sans rien changer a son apparence — c'est le meme moteur de rendu.
+  et n'affiche plus aucune syntaxe — la note y est purement consultative.
+- **Parametres** : agrandissement de toute l'interface (1×, 2×, 3×) et largeur
+  de la bande de gauche, qui se regle aussi en tirant son bord.
 - **Blocs** : titres, listes, cases a cocher, tableaux, citations, code,
   separateurs, images, et **formules mathematiques** composees par KaTeX.
 - **Bouton « + »** : inserer un bloc, un symbole mathematique (∀ ∈ ∑ ∫ π ℝ…)
@@ -149,6 +151,7 @@ Ce qui fonctionne :
 | `Ctrl+K` | Rechercher dans tout le Vault |
 | `Ctrl+G` | Basculer entre les portes et la constellation |
 | `Ctrl+E` | Basculer entre ecriture et lecture |
+| `Ctrl+,` | Ouvrir les parametres |
 | `Ctrl+W` | Fermer l'onglet courant |
 | `Ctrl+Tab` | Passer a l'onglet suivant |
 | `Echap` | Refermer la note ouverte |

@@ -11,6 +11,7 @@ import contextlib
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
+from .. import settings
 from ..models import (
     Constellation,
     CreateDoorRequest,
@@ -27,6 +28,7 @@ from ..models import (
     SetCameraRequest,
     SetCoverRequest,
     SetImagesRequest,
+    Settings,
     VaultInfo,
 )
 from ..vault import VaultError, current_vault, open_vault
@@ -68,6 +70,19 @@ def get_vault():
         return current_vault().info()
     except VaultError:
         return None
+
+
+# --- Preferences ---
+
+
+@router.get("/settings", response_model=Settings)
+def get_settings() -> Settings:
+    return settings.load()
+
+
+@router.put("/settings", response_model=Settings)
+def put_settings(payload: Settings) -> Settings:
+    return settings.save(payload)
 
 
 @router.get("/vault/last")

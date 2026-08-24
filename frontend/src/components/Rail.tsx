@@ -5,31 +5,102 @@
  * d'une note a l'autre, ou changer de porte, sans quitter le texte en cours.
  */
 
+import { useCallback, useRef, useState } from "react";
 import type { Scene } from "../lib/types";
+
+/** Bornes de la bande : assez large pour lire un titre, jamais au point d'ecraser le texte. */
+const MIN_WIDTH = 140;
+const MAX_WIDTH = 520;
 
 interface Props {
   scene: Scene | null;
   activeNoteId: string | null;
+  width: number;
   onEnterDoor: (path: string) => void;
   onGoUp: () => void;
   onOpenNote: (id: string) => void;
   onCreateNote: () => void | Promise<void>;
+  /** Pendant le geste : la largeur suit la souris. */
+  onResize: (width: number) => void;
+  /** Au relachement : la largeur est enregistree. */
+  onResizeEnd: (width: number) => void;
 }
 
 export function Rail({
   scene,
   activeNoteId,
+  width,
   onEnterDoor,
   onGoUp,
   onOpenNote,
   onCreateNote,
+  onResize,
+  onResizeEnd,
 }: Props) {
-  if (!scene) return <aside className="rail" />;
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; width: number } | null>(null);
+
+  const clamp = (value: number) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(value)));
+
+  const onPointerDown = useCallback(
+    (event: React.PointerEvent) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+      start.current = { x: event.clientX, width };
+      setDragging(true);
+    },
+    [width],
+  );
+
+  const onPointerMove = useCallback(
+    (event: React.PointerEvent) => {
+      if (!start.current) return;
+      onResize(clamp(start.current.width + event.clientX - start.current.x));
+    },
+    [onResize],
+  );
+
+  const onPointerUp = useCallback(
+    (event: React.PointerEvent) => {
+      if (!start.current) return;
+      const final = clamp(start.current.width + event.clientX - start.current.x);
+      (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
+      start.current = null;
+      setDragging(false);
+      onResizeEnd(final);
+    },
+    [onResizeEnd],
+  );
+
+  const poignee = (
+    <div
+      className={`rail__grip${dragging ? " is-dragging" : ""}`}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Largeur de la bande"
+      title="Tirer pour elargir"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      // Double-cliquer remet la largeur d'origine.
+      onDoubleClick={() => onResizeEnd(210)}
+    />
+  );
+
+  if (!scene) {
+    return (
+      <aside className="rail" style={{ width }}>
+        {poignee}
+      </aside>
+    );
+  }
 
   const atRoot = scene.path === "";
 
   return (
-    <aside className="rail">
+    <aside className="rail" style={{ width }}>
       <header className="rail__head">
         {!atRoot && (
           <button type="button" className="rail__up" onClick={onGoUp} title="Porte precedente">
@@ -79,6 +150,8 @@ export function Rail({
       <button type="button" className="rail__new" onClick={onCreateNote}>
         + Nouvelle note
       </button>
+
+      {poignee}
     </aside>
   );
 }

@@ -6,12 +6,14 @@ import { SceneView } from "./canvas/SceneView";
 import { useDialog } from "./components/Dialog";
 import { Rail } from "./components/Rail";
 import { SearchPalette } from "./components/SearchPalette";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { Tabs } from "./components/Tabs";
 import { Topbar, type View } from "./components/Topbar";
 import { VaultPicker } from "./components/VaultPicker";
 import { NoteEditor } from "./editor/NoteEditor";
 import { api } from "./lib/api";
 import { useEngineEvents } from "./lib/useEngineEvents";
+import { useSettings } from "./lib/useSettings";
 import type { Constellation, Scene, VaultInfo } from "./lib/types";
 
 type EngineState = "demarrage" | "pret" | "absent";
@@ -34,8 +36,12 @@ export default function App() {
   const [active, setActive] = useState<string | null>(null);
   const [noteReload, setNoteReload] = useState(0);
   const [searching, setSearching] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialog = useDialog();
+  const { settings, update: updateSettings } = useSettings();
+  /** Largeur suivie pendant le glissement, avant d'etre enregistree. */
+  const [railWidth, setRailWidth] = useState<number | null>(null);
 
   // Attend que le moteur reponde : il peut demarrer un peu apres la fenetre.
   useEffect(() => {
@@ -164,6 +170,11 @@ export default function App() {
       if (meta && key === "k") {
         event.preventDefault();
         setSearching(true);
+        return;
+      }
+      if (meta && event.key === ",") {
+        event.preventDefault();
+        setShowSettings((open) => !open);
         return;
       }
       if (meta && key === "g") {
@@ -304,7 +315,7 @@ export default function App() {
         onNavigate={navigate}
         onChangeView={changeView}
         onSearch={() => setSearching(true)}
-        onChangeVault={() => setChangingVault(true)}
+        onOpenSettings={() => setShowSettings(true)}
       />
 
       <Tabs
@@ -321,10 +332,16 @@ export default function App() {
             <Rail
               scene={scene}
               activeNoteId={active}
+              width={railWidth ?? settings.rail_width}
               onEnterDoor={enterDoor}
               onGoUp={goUp}
               onOpenNote={openNote}
               onCreateNote={createNote}
+              onResize={setRailWidth}
+              onResizeEnd={(largeur) => {
+                setRailWidth(null);
+                updateSettings({ rail_width: largeur });
+              }}
             />
             <NoteEditor
               key={active}
@@ -367,6 +384,16 @@ export default function App() {
             setPath(note.parent);
             openNote(note.id, note.title);
           }}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsPanel
+          settings={settings}
+          vault={vault}
+          onChange={updateSettings}
+          onChangeVault={() => setChangingVault(true)}
+          onClose={() => setShowSettings(false)}
         />
       )}
 

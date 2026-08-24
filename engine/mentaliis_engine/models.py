@@ -165,3 +165,12 @@ class SetCameraRequest(BaseModel):
     """Cadrage a retenir pour une scene."""
 
     camera: Camera
+
+
+class Settings(BaseModel):
+    """Preferences de l'utilisateur, communes a tous ses Vaults."""
+
+    #: Agrandissement de toute l'interface : 1, 2 ou 3 fois.
+    zoom: int = Field(default=1, ge=1, le=3)
+    #: Largeur de la bande de gauche, en pixels.
+    rail_width: int = Field(default=210, ge=140, le=520)

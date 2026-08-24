@@ -91,6 +91,16 @@ export interface Constellation {
 /** Nom sous lequel la vue d'ensemble retient son propre cadrage. */
 export const CONSTELLATION_VIEW = "@constellation";
 
+/** Preferences de l'utilisateur, communes a tous ses Vaults. */
+export interface Settings {
+  /** Agrandissement de toute l'interface : 1, 2 ou 3 fois. */
+  zoom: 1 | 2 | 3;
+  /** Largeur de la bande de gauche, en pixels. */
+  rail_width: number;
+}
+
+export const DEFAULT_SETTINGS: Settings = { zoom: 1, rail_width: 210 };
+
 /** Message pousse par le moteur quand le Vault change sur le disque. */
 export interface EngineEvent {
   type: "vault-changed" | "watch-stopped" | "ping";

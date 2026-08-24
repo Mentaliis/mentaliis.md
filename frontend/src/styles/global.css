@@ -360,6 +360,12 @@ code {
   border-color: var(--line-strong);
 }
 
+.topbar__gear {
+  padding: 6px 10px !important;
+  font-size: 14px !important;
+  line-height: 1;
+}
+
 /* ------------------------------------------------------------- Scene */
 
 .scene {

@@ -152,7 +152,8 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
       mentaliisTheme,
-      livePreview((target) => void latest.current.followLink(target)),
+      // En lecture, la syntaxe ne se devoile jamais : la note reste consultative.
+      livePreview((target) => void latest.current.followLink(target), !readOnly),
       placeholder("Ecrivez ici. Tapez « # » pour un titre, « - [ ] » pour une case."),
     ];
 

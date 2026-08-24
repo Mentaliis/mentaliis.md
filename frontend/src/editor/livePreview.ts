@@ -49,9 +49,14 @@ const INLINE_CLASS: Record<string, string> = {
 
 const MARK_NODES = new Set(["EmphasisMark", "StrikethroughMark", "CodeMark"]);
 
-/** Vrai si le curseur touche cette portee, marqueurs compris. */
-function near(state: EditorState, from: number, to: number): boolean {
-  return state.selection.ranges.some((range) => range.from <= to && range.to >= from);
+/**
+ * Vrai si le curseur touche cette portee, marqueurs compris.
+ *
+ * `reveal` est faux en lecture : la syntaxe ne doit alors jamais reapparaitre,
+ * pas meme sous le curseur invisible que garde un editeur verrouille.
+ */
+function near(state: EditorState, from: number, to: number, reveal: boolean): boolean {
+  return reveal && state.selection.ranges.some((range) => range.from <= to && range.to >= from);
 }
 
 /** Vrai si le curseur est pose quelque part sur la ligne de cette portee. */
@@ -68,8 +73,14 @@ function onLine(state: EditorState, from: number, to: number): boolean {
  * corrige, on repart. Mais pendant la frappe elle reste cachee : taper « # »
  * puis un texte donne un titre tout de suite, sans voir le diese.
  */
-function revealBlock(state: EditorState, typing: boolean, from: number, to: number): boolean {
-  return !typing && onLine(state, from, to);
+function revealBlock(
+  state: EditorState,
+  typing: boolean,
+  reveal: boolean,
+  from: number,
+  to: number,
+): boolean {
+  return reveal && !typing && onLine(state, from, to);
 }
 
 // ---------------------------------------------------------------- Blocs
@@ -77,14 +88,14 @@ function revealBlock(state: EditorState, typing: boolean, from: number, to: numb
 const BLOCK_MATH = /\$\$([\s\S]+?)\$\$/g;
 
 /** Tableaux et formules en bloc : tout ce qui enjambe plusieurs lignes. */
-function buildBlocks(state: EditorState): DecorationSet {
+function buildBlocks(state: EditorState, reveal: boolean): DecorationSet {
   const marks: Range<Decoration>[] = [];
   const taken: { from: number; to: number }[] = [];
 
   syntaxTree(state).iterate({
     enter: (node) => {
       if (node.name !== "Table") return undefined;
-      if (near(state, node.from, node.to)) return false;
+      if (near(state, node.from, node.to, reveal)) return false;
       const source = state.sliceDoc(node.from, node.to);
       marks.push(
         Decoration.replace({ widget: new TableWidget(source), block: true }).range(
@@ -103,7 +114,7 @@ function buildBlocks(state: EditorState): DecorationSet {
     const start = match.index;
     const end = start + match[0].length;
     if (taken.some((range) => range.from < end && range.to > start)) continue;
-    if (near(state, start, end)) continue;
+    if (near(state, start, end, reveal)) continue;
     // Un widget de bloc doit couvrir des lignes entieres.
     const from = state.doc.lineAt(start).from;
     const to = state.doc.lineAt(end).to;
@@ -119,15 +130,22 @@ function buildBlocks(state: EditorState): DecorationSet {
   return Decoration.set(marks, true);
 }
 
-const blockField = StateField.define<DecorationSet>({
-  create: buildBlocks,
-  update(value, transaction) {
-    // La selection compte autant que le texte : c'est elle qui decide quand un
-    // tableau redevient modifiable.
-    return transaction.docChanged || transaction.selection ? buildBlocks(transaction.state) : value;
-  },
-  provide: (field) => EditorView.decorations.from(field),
-});
+/** Un champ par editeur : ecriture et lecture ne se comportent pas pareil. */
+function makeBlockField(reveal: boolean) {
+  return StateField.define<DecorationSet>({
+    create: (state) => buildBlocks(state, reveal),
+    update(value, transaction) {
+      // La selection compte autant que le texte : c'est elle qui decide quand un
+      // tableau redevient modifiable.
+      return transaction.docChanged || transaction.selection
+        ? buildBlocks(transaction.state, reveal)
+        : value;
+    },
+    provide: (field) => EditorView.decorations.from(field),
+  });
+}
+
+type BlockField = ReturnType<typeof makeBlockField>;
 
 // ---------------------------------------------------------------- Lignes
 
@@ -135,7 +153,12 @@ const EMBED = /!\[\[([^\]\n]+?)\]\]/g;
 const WIKILINK = /(!?)\[\[([^\]\n]+?)\]\]/g;
 const INLINE_MATH = /\$([^$\n]+?)\$/g;
 
-function buildInline(view: EditorView, typing: boolean): DecorationSet {
+function buildInline(
+  view: EditorView,
+  typing: boolean,
+  reveal: boolean,
+  blockField: BlockField,
+): DecorationSet {
   const { state } = view;
   const marks: Range<Decoration>[] = [];
   const consumed: { from: number; to: number }[] = [];
@@ -163,18 +186,18 @@ function buildInline(view: EditorView, typing: boolean): DecorationSet {
         const name = node.name;
 
         // Le tableau est deja traite comme un bloc.
-        if (name === "Table") return near(state, node.from, node.to) ? undefined : false;
+        if (name === "Table") return near(state, node.from, node.to, reveal) ? undefined : false;
 
         if (name === "HorizontalRule") {
           // Des le troisieme tiret tape, le trait apparait ; y reposer le
           // curseur ramene les « --- » pour pouvoir les effacer.
-          if (revealBlock(state, typing, node.from, node.to)) return false;
+          if (revealBlock(state, typing, reveal, node.from, node.to)) return false;
           replace(node.from, node.to, Decoration.replace({ widget: new RuleWidget() }));
           return false;
         }
 
         if (name === "Image") {
-          if (near(state, node.from, node.to)) return false;
+          if (near(state, node.from, node.to, reveal)) return false;
           const parsed = /^!\[([^\]]*)\]\(([^)]+)\)/.exec(state.sliceDoc(node.from, node.to));
           if (!parsed) return false;
           replace(
@@ -195,7 +218,7 @@ function buildInline(view: EditorView, typing: boolean): DecorationSet {
         }
 
         if (name === "HeaderMark" || name === "QuoteMark") {
-          if (revealBlock(state, typing, node.from, node.to)) return false;
+          if (revealBlock(state, typing, reveal, node.from, node.to)) return false;
           // Le marqueur et l'espace qui le suit partent ensemble.
           const end = state.sliceDoc(node.to, node.to + 1) === " " ? node.to + 1 : node.to;
           replace(node.from, end, HIDE);
@@ -236,12 +259,14 @@ function buildInline(view: EditorView, typing: boolean): DecorationSet {
 
         if (MARK_NODES.has(name)) {
           const parent = node.node.parent;
-          if (parent && !near(state, parent.from, parent.to)) replace(node.from, node.to, HIDE);
+          if (parent && !near(state, parent.from, parent.to, reveal)) {
+            replace(node.from, node.to, HIDE);
+          }
           return false;
         }
 
         if (name === "Link") {
-          if (near(state, node.from, node.to)) return undefined;
+          if (near(state, node.from, node.to, reveal)) return undefined;
           const parsed = /^\[([^\]]*)\]\(([^)]+)\)/.exec(state.sliceDoc(node.from, node.to));
           if (!parsed) return undefined;
           // Ne reste a l'ecran que le texte du lien.
@@ -261,7 +286,7 @@ function buildInline(view: EditorView, typing: boolean): DecorationSet {
 
   // Ce que l'analyseur markdown ne connait pas : [[liens]], ![[images]], $maths$.
   for (const { from, to } of view.visibleRanges) {
-    scanExtras(state.sliceDoc(from, to), from, state, marks, free, replace);
+    scanExtras(state.sliceDoc(from, to), from, state, reveal, marks, free, replace);
   }
 
   return Decoration.set(marks, true);
@@ -271,6 +296,7 @@ function scanExtras(
   text: string,
   offset: number,
   state: EditorState,
+  reveal: boolean,
   marks: Range<Decoration>[],
   free: (from: number, to: number) => boolean,
   replace: (from: number, to: number, decoration: Decoration) => void,
@@ -279,7 +305,7 @@ function scanExtras(
   for (const match of text.matchAll(EMBED)) {
     const start = offset + match.index;
     const end = start + match[0].length;
-    if (!free(start, end) || near(state, start, end)) continue;
+    if (!free(start, end) || near(state, start, end, reveal)) continue;
     replace(start, end, Decoration.replace({ widget: new ImageWidget(match[1].trim(), "") }));
   }
 
@@ -293,7 +319,7 @@ function scanExtras(
     const target = inner.split("|")[0].split("#")[0].trim();
     const shown = inner.includes("|") ? inner.split("|")[1].trim() : inner.trim();
 
-    if (near(state, start, end)) {
+    if (near(state, start, end, reveal)) {
       marks.push(Decoration.mark({ class: "cm-wikilink is-raw" }).range(start, end));
       continue;
     }
@@ -315,7 +341,7 @@ function scanExtras(
     if (before === "\\" || before === "$") continue;
     const start = offset + match.index;
     const end = start + match[0].length;
-    if (!free(start, end) || near(state, start, end)) continue;
+    if (!free(start, end) || near(state, start, end, reveal)) continue;
     const bloc = match[1].startsWith("$") && match[1].endsWith("$");
     const formula = bloc ? match[1].slice(1, -1).trim() : match[1].trim();
     replace(start, end, Decoration.replace({ widget: new MathWidget(formula, bloc) }));
@@ -324,7 +350,13 @@ function scanExtras(
 
 // ---------------------------------------------------------------- Assemblage
 
-export function livePreview(onFollowLink: (target: string) => void): Extension {
+export function livePreview(
+  onFollowLink: (target: string) => void,
+  /** Faux en lecture : le texte est alors purement consultatif, sans syntaxe. */
+  reveal = true,
+): Extension {
+  const blockField = makeBlockField(reveal);
+
   const plugin = ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
@@ -332,7 +364,7 @@ export function livePreview(onFollowLink: (target: string) => void): Extension {
       private typing = true;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view, this.typing);
+        this.decorations = buildInline(view, this.typing, reveal, blockField);
       }
 
       update(update: ViewUpdate) {
@@ -342,7 +374,7 @@ export function livePreview(onFollowLink: (target: string) => void): Extension {
         else if (update.selectionSet) this.typing = false;
 
         if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildInline(update.view, this.typing);
+          this.decorations = buildInline(update.view, this.typing, reveal, blockField);
         }
       }
     },

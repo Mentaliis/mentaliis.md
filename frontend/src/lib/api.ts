@@ -15,6 +15,7 @@ import type {
   NoteSummary,
   Position,
   Scene,
+  Settings,
   VaultInfo,
 } from "./types";
 
@@ -46,6 +47,11 @@ const body = (payload: unknown) => ({ body: JSON.stringify(payload) });
 
 export const api = {
   health: () => request<{ status: string }>("/health"),
+
+  // --- Preferences ---
+  settings: () => request<Settings>("/settings"),
+  saveSettings: (settings: Settings) =>
+    request<Settings>("/settings", { method: "PUT", ...body(settings) }),
 
   // --- Vault ---
   getVault: () => request<VaultInfo | null>("/vault"),

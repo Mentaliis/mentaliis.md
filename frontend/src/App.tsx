@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConstellationView } from "./canvas/ConstellationView";
 import { SceneView } from "./canvas/SceneView";
+import { useDialog } from "./components/Dialog";
 import { Rail } from "./components/Rail";
 import { SearchPalette } from "./components/SearchPalette";
 import { Tabs } from "./components/Tabs";
@@ -34,6 +35,7 @@ export default function App() {
   const [noteReload, setNoteReload] = useState(0);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialog = useDialog();
 
   // Attend que le moteur reponde : il peut demarrer un peu apres la fenetre.
   useEffect(() => {
@@ -211,7 +213,12 @@ export default function App() {
   }, []);
 
   const createNote = useCallback(async () => {
-    const title = window.prompt("Titre de la note", "Sans titre");
+    const title = await dialog.prompt({
+      title: "Nouvelle note",
+      message: `Dans ${scene?.name ?? "le Vault"}.`,
+      value: "Sans titre",
+      confirmLabel: "Creer",
+    });
     if (!title) return;
     try {
       const created = await api.createNote(path, title);
@@ -220,7 +227,7 @@ export default function App() {
     } catch (problem) {
       setError((problem as Error).message);
     }
-  }, [openNote, path, refresh]);
+  }, [dialog, openNote, path, refresh, scene?.name]);
 
   const activeTitle = useMemo(
     () => tabs.find((tab) => tab.id === active)?.title,

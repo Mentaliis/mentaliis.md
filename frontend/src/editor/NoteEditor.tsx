@@ -17,6 +17,7 @@ import {
   indentWithTab,
 } from "@codemirror/commands";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDialog } from "../components/Dialog";
 import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
 import { InsertMenu } from "./InsertMenu";
@@ -46,6 +47,7 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
   const [error, setError] = useState<string | null>(null);
   const [inserting, setInserting] = useState(false);
   const [showLinks, setShowLinks] = useState(true);
+  const dialog = useDialog();
 
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
@@ -68,7 +70,12 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
           onOpenNote(id);
           return;
         }
-        if (window.confirm(`"${target}" n'existe pas encore. La creer ?`)) {
+        const create = await dialog.confirm({
+          title: `Creer « ${target} » ?`,
+          message: "Cette note n'existe pas encore. Elle sera creee dans la porte courante.",
+          confirmLabel: "Creer la note",
+        });
+        if (create) {
           const created = await api.createNote(note?.parent ?? "", target);
           onSaved();
           onOpenNote(created.id);
@@ -77,7 +84,7 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
         setError((problem as Error).message);
       }
     },
-    [note?.parent, onOpenNote, onSaved],
+    [dialog, note?.parent, onOpenNote, onSaved],
   );
 
   // --- Chargement de la note ---

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { api } from "../lib/api";
 import type { Door, NoteSummary, Position, Scene } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
+import { useDialog } from "../components/Dialog";
 import { DoorNode } from "./DoorNode";
 import { NoteNode } from "./NoteNode";
 import { useViewport } from "./useViewport";
@@ -34,6 +35,7 @@ export function SceneView({
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const dialog = useDialog();
   const viewport = useViewport();
   const surface = useRef<HTMLDivElement>(null);
 
@@ -90,7 +92,11 @@ export function SceneView({
       {
         label: "Renommer",
         action: async () => {
-          const next = window.prompt("Nouveau nom", name);
+          const next = await dialog.prompt({
+            title: hasCover === null ? "Renommer la note" : "Renommer la porte",
+            value: name,
+            confirmLabel: "Renommer",
+          });
           if (next && next !== name) {
             await api.rename(id, next);
             onSceneChanged();
@@ -114,14 +120,21 @@ export function SceneView({
         label: "Supprimer",
         danger: true,
         action: async () => {
-          if (window.confirm(`Envoyer "${name}" a la corbeille du Vault ?`)) {
+          const sure = await dialog.confirm({
+            title: `Supprimer « ${name} » ?`,
+            message:
+              "Rien n'est efface definitivement : tout part dans la corbeille du Vault, dans le dossier .mentaliis.",
+            confirmLabel: "Mettre a la corbeille",
+            danger: true,
+          });
+          if (sure) {
             await api.remove(id);
             onSceneChanged();
           }
         },
       },
     ],
-    [onSceneChanged],
+    [dialog, onSceneChanged],
   );
 
   const backgroundMenu = useCallback(
@@ -129,7 +142,12 @@ export function SceneView({
       {
         label: "Nouvelle note",
         action: async () => {
-          const title = window.prompt("Titre de la note", "Sans titre");
+          const title = await dialog.prompt({
+            title: "Nouvelle note",
+            message: `Dans ${scene.name}.`,
+            value: "Sans titre",
+            confirmLabel: "Creer",
+          });
           if (title) {
             const note = await api.createNote(scene.path, title);
             onSceneChanged();
@@ -140,7 +158,12 @@ export function SceneView({
       {
         label: "Nouvelle porte",
         action: async () => {
-          const name = window.prompt("Nom de la porte", "Nouvelle porte");
+          const name = await dialog.prompt({
+            title: "Nouvelle porte",
+            message: `Dans ${scene.name}.`,
+            value: "Nouvelle porte",
+            confirmLabel: "Creer",
+          });
           if (name) {
             await api.createDoor(scene.path, name);
             onSceneChanged();
@@ -148,7 +171,7 @@ export function SceneView({
         },
       },
     ],
-    [onOpenNote, onSceneChanged, scene.path],
+    [dialog, onOpenNote, onSceneChanged, scene.name, scene.path],
   );
 
   return (

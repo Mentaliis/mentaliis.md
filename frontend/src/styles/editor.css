@@ -876,6 +876,124 @@
   color: inherit;
 }
 
+/* ------------------------------------------------ Boites de dialogue */
+
+.dialog__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+  background: rgba(4, 8, 16, 0.62);
+  backdrop-filter: blur(4px);
+  animation: fade var(--fast) var(--ease);
+}
+
+.dialog {
+  width: min(430px, 90vw);
+  padding: 22px 24px 18px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 34px 80px -30px rgba(0, 0, 0, 0.95);
+  animation: dialog-in var(--slow) var(--ease);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.985);
+  }
+}
+
+.dialog__title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.dialog__message {
+  margin-top: 7px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.dialog__input {
+  width: 100%;
+  padding: 10px 13px;
+  margin-top: 16px;
+  font-size: 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.dialog__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dialog__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.dialog__cancel,
+.dialog__confirm {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 9px;
+  transition:
+    color var(--fast) var(--ease),
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    filter var(--fast) var(--ease);
+}
+
+.dialog__cancel {
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+}
+
+.dialog__cancel:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.dialog__confirm {
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid transparent;
+}
+
+.dialog__confirm:hover:not(:disabled) {
+  filter: brightness(1.14);
+}
+
+.dialog__confirm:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.dialog__confirm.is-danger {
+  background: var(--danger);
+}
+
+.dialog__cancel:focus-visible,
+.dialog__confirm:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ---------------------------------------------------------- Toast */
 
 .toast {

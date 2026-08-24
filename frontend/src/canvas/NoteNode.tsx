@@ -1,6 +1,7 @@
 /** Une note : un fichier markdown, avec ses images accrochees autour. */
 
 import { useCallback, useEffect, useState } from "react";
+import { useDialog } from "../components/Dialog";
 import { api } from "../lib/api";
 import type { AttachedImage, NoteSummary, Position } from "../lib/types";
 import { useDraggable } from "./useDraggable";
@@ -146,6 +147,7 @@ function PinnedImage({
   onCommit: (position: Position) => void;
   onDetach: () => void;
 }) {
+  const dialog = useDialog();
   const { dragging, handlers } = useDraggable({ position: image.position, scale, onMove, onCommit });
 
   return (
@@ -154,10 +156,16 @@ function PinnedImage({
       style={{ transform: `translate(${image.position.x}px, ${image.position.y}px)` }}
       title={image.caption || image.path}
       {...handlers}
-      onContextMenu={(event) => {
+      onContextMenu={async (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (window.confirm("Detacher cette image ? Le fichier reste dans le Vault.")) onDetach();
+        const detach = await dialog.confirm({
+          title: "Detacher cette image ?",
+          message: `Elle disparait de la note, mais le fichier reste dans le Vault (${image.path}).`,
+          confirmLabel: "Detacher",
+          danger: true,
+        });
+        if (detach) onDetach();
       }}
     >
       {/* Le fil part du centre de la note et rejoint l'image. */}

@@ -59,6 +59,29 @@ body {
   background: var(--bg-deep);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+
+  /* Un logiciel de bureau ne laisse pas surligner ses menus et ses etiquettes
+     par accident. Seul le texte que l'on ecrit reellement reste selectionnable
+     (voir la regle ci-dessous). */
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* Ce qui reste selectionnable : le contenu d'une note, et les champs de saisie. */
+.cm-content,
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: auto;
+}
+
+/* Aucune image ne se laisse arracher hors de l'application. */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
 }
 
 button {
@@ -378,6 +401,35 @@ code {
   top: 0;
   left: 0;
   transform-origin: 0 0;
+}
+
+/* Le nom de la porte ou l'on se trouve, toujours en haut, toujours en capitales. */
+.scene__banner {
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  z-index: 5;
+  max-width: 70%;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  text-align: center;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  text-shadow: 0 2px 18px var(--bg-deep);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: banner-in var(--slow) var(--ease);
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
 }
 
 .scene__empty {

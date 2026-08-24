@@ -176,6 +176,10 @@ export function SceneView({
 
   return (
     <div className="scene">
+      {/* Le nom de la porte, toujours au meme endroit : on sait d'un coup d'oeil
+          ou l'on se trouve, sans lire le fil d'Ariane. */}
+      <div className="scene__banner">{scene.name}</div>
+
       <div
         ref={surface}
         className={`scene__surface${viewport.panning ? " is-panning" : ""}`}

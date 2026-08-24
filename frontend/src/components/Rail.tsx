@@ -13,7 +13,7 @@ interface Props {
   onEnterDoor: (path: string) => void;
   onGoUp: () => void;
   onOpenNote: (id: string) => void;
-  onCreateNote: () => void;
+  onCreateNote: () => void | Promise<void>;
 }
 
 export function Rail({

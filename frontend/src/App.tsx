@@ -212,6 +212,32 @@ export default function App() {
     setView("scene");
   }, []);
 
+  const goUp = useCallback(() => setPath((current) => current.split("/").slice(0, -1).join("/")), []);
+
+  const navigate = useCallback(
+    (target: string) => {
+      enterDoor(target);
+      closeAll();
+    },
+    [closeAll, enterDoor],
+  );
+
+  const changeView = useCallback(
+    (next: View) => {
+      closeAll();
+      setView(next);
+    },
+    [closeAll],
+  );
+
+  const leaveConstellation = useCallback(
+    (target: string) => {
+      enterDoor(target);
+      setView("scene");
+    },
+    [enterDoor],
+  );
+
   const createNote = useCallback(async () => {
     const title = await dialog.prompt({
       title: "Nouvelle note",
@@ -275,14 +301,8 @@ export default function App() {
         path={path}
         view={view}
         editingTitle={editing ? activeTitle : undefined}
-        onNavigate={(target) => {
-          enterDoor(target);
-          closeAll();
-        }}
-        onChangeView={(next) => {
-          closeAll();
-          setView(next);
-        }}
+        onNavigate={navigate}
+        onChangeView={changeView}
         onSearch={() => setSearching(true)}
         onChangeVault={() => setChangingVault(true)}
       />
@@ -302,16 +322,16 @@ export default function App() {
               scene={scene}
               activeNoteId={active}
               onEnterDoor={enterDoor}
-              onGoUp={() => setPath(path.split("/").slice(0, -1).join("/"))}
-              onOpenNote={(id) => openNote(id)}
-              onCreateNote={() => void createNote()}
+              onGoUp={goUp}
+              onOpenNote={openNote}
+              onCreateNote={createNote}
             />
             <NoteEditor
               key={active}
               noteId={active}
               reloadToken={noteReload}
               onSaved={refresh}
-              onOpenNote={(id) => openNote(id)}
+              onOpenNote={openNote}
             />
           </>
         ) : view === "constellation" ? (
@@ -319,11 +339,8 @@ export default function App() {
             <ConstellationView
               data={sky}
               activeNoteId={active}
-              onEnterDoor={(target) => {
-                enterDoor(target);
-                setView("scene");
-              }}
-              onOpenNote={(id) => openNote(id)}
+              onEnterDoor={leaveConstellation}
+              onOpenNote={openNote}
             />
           ) : (
             <div className="boot">{error ?? "Assemblage de la constellation…"}</div>
@@ -333,7 +350,7 @@ export default function App() {
             scene={scene}
             activeNoteId={active}
             onEnterDoor={enterDoor}
-            onOpenNote={(id) => openNote(id)}
+            onOpenNote={openNote}
             onSceneChanged={refresh}
             onError={setError}
           />

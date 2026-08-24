@@ -53,6 +53,8 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
   const view = useRef<EditorView | null>(null);
   const content = useRef("");
   const timer = useRef<number | null>(null);
+  /** Position du curseur, conservee d'une reconstruction de l'editeur a l'autre. */
+  const caret = useRef(0);
 
   const refreshLinks = useCallback(() => {
     api
@@ -113,6 +115,13 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
   const loaded = note !== null;
   const readOnly = mode === "lecture";
 
+  // Ces fonctions changent d'identite a chaque rendu du parent. Les lire dans une
+  // reference plutot que dans les dependances evite de reconstruire l'editeur pour
+  // rien : le reconstruire ramenait le curseur au debut du texte a chaque
+  // enregistrement automatique.
+  const latest = useRef({ onSaved, refreshLinks, followLink });
+  latest.current = { onSaved, refreshLinks, followLink };
+
   useEffect(() => {
     if (!loaded || !host.current) return;
 
@@ -126,8 +135,8 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
         try {
           await api.saveNote(noteId, text);
           setStatus("enregistre");
-          onSaved();
-          refreshLinks();
+          latest.current.onSaved();
+          latest.current.refreshLinks();
         } catch (problem) {
           setError((problem as Error).message);
         }
@@ -143,7 +152,7 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
       markdown({ base: markdownLanguage }),
       EditorView.lineWrapping,
       mentaliisTheme,
-      livePreview((target) => void followLink(target)),
+      livePreview((target) => void latest.current.followLink(target)),
       placeholder("Ecrivez ici. Tapez « # » pour un titre, « - [ ] » pour une case."),
     ];
 
@@ -155,12 +164,17 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
       extensions.push(
         EditorView.updateListener.of((update) => {
           if (update.docChanged) save(update.state.doc.toString());
+          if (update.selectionSet) caret.current = update.state.selection.main.head;
         }),
       );
     }
 
+    // On revient ou l'on etait : bascule ecriture/lecture ou relecture du disque
+    // ne doivent pas faire perdre sa place dans le texte.
+    const anchor = Math.min(caret.current, content.current.length);
+
     const editor = new EditorView({
-      state: EditorState.create({ doc: content.current, extensions }),
+      state: EditorState.create({ doc: content.current, extensions, selection: { anchor } }),
       parent: host.current,
     });
     view.current = editor;
@@ -170,7 +184,7 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
       editor.destroy();
       view.current = null;
     };
-  }, [loaded, noteId, onSaved, readOnly, reloadToken, refreshLinks, followLink]);
+  }, [loaded, noteId, readOnly, reloadToken]);
 
   // Ctrl+E bascule entre ecrire et lire, sans quitter la note.
   useEffect(() => {

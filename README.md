@@ -118,6 +118,7 @@ Ce qui fonctionne :
 
 - **Vault** : ouverture d'un dossier racine, memorise et rouvert au lancement suivant.
 - **Portes** : chaque dossier est une porte, avec son image de vision au-dessus.
+  Le nom du lieu ou l'on se trouve est rappele en capitales, tout en haut, au centre.
 - **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
 - **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.

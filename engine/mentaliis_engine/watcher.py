@@ -82,7 +82,7 @@ class Watcher:
                 external = [path for path in paths if not vault.wrote_recently(Path(path))]
                 if not external:
                     continue
-                vault.links.invalidate()
+                vault.invalidate_caches()
                 self._broadcast(
                     {
                         "type": "vault-changed",

@@ -8,7 +8,8 @@ from typing import Any
 
 import frontmatter
 
-WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]")
+# `![[image.png]]` embarque un fichier : ce n'est pas un lien vers une note.
+WIKILINK_RE = re.compile(r"(?<!!)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]")
 TAG_RE = re.compile(r"(?:^|\s)#([A-Za-z0-9_\-/]{1,60})")
 HEADING_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
 

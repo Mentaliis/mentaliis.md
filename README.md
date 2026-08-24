@@ -43,7 +43,8 @@ Le moteur s'eteint automatiquement avec la fenetre.
 | Fenetre native / packaging | Tauri 2 (Windows, macOS, Linux) |
 | Interface  | React + TypeScript + Vite |
 | Canvas spatial | DOM + transform CSS (entierement restylable en CSS) |
-| Editeur markdown | CodeMirror 6 |
+| Editeur markdown | CodeMirror 6, apercu vivant maison |
+| Formules | KaTeX, charge seulement si une note en contient |
 | Moteur | Python 3.11+ / FastAPI / Uvicorn |
 | Stockage | Fichiers `.md` en clair + `.mentaliis/` (layout, cache) |
 
@@ -99,10 +100,24 @@ Ce qui fonctionne :
 - **Portes** : chaque dossier est une porte, avec son image de vision au-dessus.
 - **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
-- **Editeur** markdown (CodeMirror 6), enregistrement automatique, apercu rendu.
-- **Liens `[[wikilink]]`** : cliquables dans l'apercu, avec backlinks et liens a ecrire.
+- **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.
+  Taper `# ` donne un titre aussitot, `---` un trait, `- [ ]` une case a cocher
+  cliquable. La syntaxe ne reapparait que quand le curseur entre dans l'element.
+  Le fichier sur le disque, lui, reste du markdown parfaitement ordinaire.
+- **Deux modes** : *ecriture* (par defaut) et *lecture*, qui verrouille le texte
+  sans rien changer a son apparence — c'est le meme moteur de rendu.
+- **Blocs** : titres, listes, cases a cocher, tableaux, citations, code,
+  separateurs, images, et **formules mathematiques** composees par KaTeX.
+- **Bouton « + »** : inserer un bloc, un symbole mathematique (∀ ∈ ∑ ∫ π ℝ…)
+  ou une image du Vault.
+- **Onglets** : plusieurs notes ouvertes en meme temps, avec une bande a gauche
+  qui montre la porte courante pour naviguer sans quitter le texte.
+- **Liens `[[wikilink]]`** : cliquables dans le texte, avec backlinks et liens a ecrire.
 - **Constellation** : tout le Vault d'un coup d'oeil, les liens tires en fils entre les notes.
-- **Glisser-deposer** d'images : sur une porte pour sa vision, sur une note pour l'illustrer.
+- **Images** : rangees ou l'on veut dans le Vault, citees par leur seul nom
+  (`![[schema.png]]`) — le moteur les retrouve dans n'importe quel sous-dossier.
+- **Glisser-deposer** d'images : sur une porte pour sa vision, sur une note pour
+  l'illustrer, ou directement dans le texte.
 - **Surveillance du disque** : une note modifiee dans un autre editeur apparait ici aussitot.
 - **Recherche** plein texte (Ctrl+K), **corbeille** dans `.mentaliis/trash/`.
 
@@ -112,8 +127,12 @@ Ce qui fonctionne :
 |--------|-------|
 | `Ctrl+K` | Rechercher dans tout le Vault |
 | `Ctrl+G` | Basculer entre les portes et la constellation |
+| `Ctrl+E` | Basculer entre ecriture et lecture |
+| `Ctrl+W` | Fermer l'onglet courant |
+| `Ctrl+Tab` | Passer a l'onglet suivant |
 | `Echap` | Refermer la note ouverte |
 | Clic droit | Creer, renommer, supprimer |
 | Molette | Zoomer / dezoomer |
+| Clic du milieu | Deplacer la vue, ou fermer un onglet |
 
 A venir : tags et proprietes navigables, historique des versions, themes, greffons.

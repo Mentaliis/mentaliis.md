@@ -66,6 +66,16 @@ export function SceneView({
     [moveLocal],
   );
 
+  /** Zoome autour du centre de la vue, pas du coin. */
+  const { zoomBy } = viewport;
+  const zoom = useCallback(
+    (factor: number) => {
+      const element = surface.current;
+      zoomBy(factor, element?.clientWidth, element?.clientHeight);
+    },
+    [zoomBy],
+  );
+
   const openMenu = useCallback(
     (event: React.MouseEvent, items: MenuItem[]) => {
       event.preventDefault();
@@ -155,12 +165,7 @@ export function SceneView({
           if (event.target === event.currentTarget) openMenu(event, backgroundMenu());
         }}
       >
-        <div
-          className="scene__world"
-          style={{
-            transform: `translate(${viewport.camera.x}px, ${viewport.camera.y}px) scale(${viewport.camera.scale})`,
-          }}
-        >
+        <div className="scene__world" style={viewport.worldStyle}>
           {doors.map((door) => (
             <DoorNode
               key={door.id}
@@ -202,10 +207,10 @@ export function SceneView({
       </div>
 
       <div className="scene__controls">
-        <button type="button" onClick={() => viewport.zoomBy(1.2)} title="Zoomer">
+        <button type="button" onClick={() => zoom(1.25)} title="Zoomer">
           +
         </button>
-        <button type="button" onClick={() => viewport.zoomBy(1 / 1.2)} title="Dezoomer">
+        <button type="button" onClick={() => zoom(1 / 1.25)} title="Dezoomer">
           −
         </button>
         <button

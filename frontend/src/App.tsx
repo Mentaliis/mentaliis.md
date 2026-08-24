@@ -1,9 +1,11 @@
-/** Orchestration : le Vault ouvert, la vue courante, la note en cours d'edition. */
+/** Orchestration : le Vault ouvert, la vue courante, les notes ouvertes en onglets. */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConstellationView } from "./canvas/ConstellationView";
 import { SceneView } from "./canvas/SceneView";
+import { Rail } from "./components/Rail";
 import { SearchPalette } from "./components/SearchPalette";
+import { Tabs } from "./components/Tabs";
 import { Topbar, type View } from "./components/Topbar";
 import { VaultPicker } from "./components/VaultPicker";
 import { NoteEditor } from "./editor/NoteEditor";
@@ -13,6 +15,12 @@ import type { Constellation, Scene, VaultInfo } from "./lib/types";
 
 type EngineState = "demarrage" | "pret" | "absent";
 
+/** Une note ouverte dans un onglet. */
+interface OpenNote {
+  id: string;
+  title: string;
+}
+
 export default function App() {
   const [engine, setEngine] = useState<EngineState>("demarrage");
   const [vault, setVault] = useState<VaultInfo | null>(null);
@@ -21,7 +29,8 @@ export default function App() {
   const [path, setPath] = useState("");
   const [scene, setScene] = useState<Scene | null>(null);
   const [sky, setSky] = useState<Constellation | null>(null);
-  const [noteId, setNoteId] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<OpenNote[]>([]);
+  const [active, setActive] = useState<string | null>(null);
   const [noteReload, setNoteReload] = useState(0);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,54 +58,141 @@ export default function App() {
     };
   }, []);
 
-  const load = useCallback(async () => {
+  // --- Chargement ---
+
+  const loadScene = useCallback(async () => {
     if (!vault) return;
     try {
-      if (view === "constellation") setSky(await api.constellation());
-      else setScene(await api.scene(path));
+      setScene(await api.scene(path));
       setError(null);
     } catch (problem) {
       setError((problem as Error).message);
     }
-  }, [path, vault, view]);
+  }, [path, vault]);
+
+  const loadSky = useCallback(async () => {
+    if (!vault) return;
+    try {
+      setSky(await api.constellation());
+      setError(null);
+    } catch (problem) {
+      setError((problem as Error).message);
+    }
+  }, [vault]);
+
+  // La scene est toujours chargee : c'est elle qui alimente la bande de gauche
+  // pendant l'ecriture, meme quand l'environnement n'est pas a l'ecran.
+  useEffect(() => {
+    void loadScene();
+  }, [loadScene]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (view === "constellation") void loadSky();
+  }, [loadSky, view]);
 
-  // Le Vault reste un dossier ordinaire : si le disque bouge, la vue suit.
-  const openNoteId = useRef<string | null>(null);
-  openNoteId.current = noteId;
+  const refresh = useCallback(() => {
+    void loadScene();
+    if (view === "constellation") void loadSky();
+  }, [loadScene, loadSky, view]);
+
+  // --- Onglets ---
+
+  const openNote = useCallback((id: string, title?: string) => {
+    setTabs((current) =>
+      current.some((tab) => tab.id === id)
+        ? current
+        : [...current, { id, title: title ?? id.split("/").pop()?.replace(/\.md$/i, "") ?? id }],
+    );
+    setActive(id);
+  }, []);
+
+  const closeNote = useCallback((id: string) => {
+    setTabs((current) => {
+      const next = current.filter((tab) => tab.id !== id);
+      setActive((currentActive) => {
+        if (currentActive !== id) return currentActive;
+        // On bascule sur la voisine, comme dans un navigateur.
+        const index = current.findIndex((tab) => tab.id === id);
+        return next[Math.min(index, next.length - 1)]?.id ?? null;
+      });
+      return next;
+    });
+  }, []);
+
+  const closeAll = useCallback(() => {
+    setTabs([]);
+    setActive(null);
+  }, []);
+
+  // Garde les titres des onglets a jour quand une note est renommee ou modifiee.
+  useEffect(() => {
+    if (!scene) return;
+    setTabs((current) =>
+      current.map((tab) => {
+        const found = scene.notes.find((note) => note.id === tab.id);
+        return found && found.title !== tab.title ? { ...tab, title: found.title } : tab;
+      }),
+    );
+  }, [scene]);
+
+  // --- Changements venus du disque ---
+
+  const activeRef = useRef<string | null>(null);
+  activeRef.current = active;
   useEngineEvents(
     useCallback(
       (paths) => {
-        void load();
-        // Si la note ouverte est celle qui a change, il faut la relire.
-        if (openNoteId.current && paths.includes(openNoteId.current)) {
+        refresh();
+        if (activeRef.current && paths.includes(activeRef.current)) {
           setNoteReload((token) => token + 1);
         }
       },
-      [load],
+      [refresh],
     ),
   );
 
-  // Ctrl+K : recherche. Ctrl+G : vue d'ensemble. Echap : refermer la note.
+  // --- Raccourcis ---
+
+  const editing = active !== null;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const meta = event.ctrlKey || event.metaKey;
-      if (meta && event.key.toLowerCase() === "k") {
+      const key = event.key.toLowerCase();
+
+      if (meta && key === "k") {
         event.preventDefault();
         setSearching(true);
+        return;
       }
-      if (meta && event.key.toLowerCase() === "g") {
+      if (meta && key === "g") {
         event.preventDefault();
+        closeAll();
         setView((current) => (current === "scene" ? "constellation" : "scene"));
+        return;
       }
-      if (event.key === "Escape" && !searching) setNoteId(null);
+      if (meta && key === "w" && activeRef.current) {
+        event.preventDefault();
+        closeNote(activeRef.current);
+        return;
+      }
+      if (meta && event.key === "Tab") {
+        event.preventDefault();
+        setTabs((current) => {
+          if (current.length < 2) return current;
+          const index = current.findIndex((tab) => tab.id === activeRef.current);
+          const step = event.shiftKey ? -1 : 1;
+          setActive(current[(index + step + current.length) % current.length].id);
+          return current;
+        });
+        return;
+      }
+      if (event.key === "Escape" && !searching && activeRef.current) {
+        closeNote(activeRef.current);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [searching]);
+  }, [closeAll, closeNote, searching]);
 
   // Une image lachee a cote d'une cible ne doit pas etre ouverte par le navigateur.
   useEffect(() => {
@@ -108,6 +204,30 @@ export default function App() {
       window.removeEventListener("drop", swallow);
     };
   }, []);
+
+  const enterDoor = useCallback((target: string) => {
+    setPath(target);
+    setView("scene");
+  }, []);
+
+  const createNote = useCallback(async () => {
+    const title = window.prompt("Titre de la note", "Sans titre");
+    if (!title) return;
+    try {
+      const created = await api.createNote(path, title);
+      refresh();
+      openNote(created.id, created.title);
+    } catch (problem) {
+      setError((problem as Error).message);
+    }
+  }, [openNote, path, refresh]);
+
+  const activeTitle = useMemo(
+    () => tabs.find((tab) => tab.id === active)?.title,
+    [active, tabs],
+  );
+
+  // --- Rendu ---
 
   if (engine === "absent") {
     return (
@@ -133,40 +253,70 @@ export default function App() {
           setVault(opened);
           setChangingVault(false);
           setPath("");
-          setNoteId(null);
           setView("scene");
+          closeAll();
         }}
         onCancel={vault ? () => setChangingVault(false) : undefined}
       />
     );
   }
 
-  const enterDoor = (target: string) => {
-    setPath(target);
-    setNoteId(null);
-    setView("scene");
-  };
-
   return (
-    <div className={`app${noteId ? " app--editing" : ""}`}>
+    <div className={`app${editing ? " app--editing" : ""}`}>
       <Topbar
         vault={vault}
         path={path}
         view={view}
-        onNavigate={enterDoor}
-        onChangeView={setView}
+        editingTitle={editing ? activeTitle : undefined}
+        onNavigate={(target) => {
+          enterDoor(target);
+          closeAll();
+        }}
+        onChangeView={(next) => {
+          closeAll();
+          setView(next);
+        }}
         onSearch={() => setSearching(true)}
         onChangeVault={() => setChangingVault(true)}
       />
 
+      <Tabs
+        tabs={tabs}
+        active={active}
+        onSelect={setActive}
+        onClose={closeNote}
+        onCloseAll={closeAll}
+      />
+
       <main className="app__body">
-        {view === "constellation" ? (
+        {editing ? (
+          <>
+            <Rail
+              scene={scene}
+              activeNoteId={active}
+              onEnterDoor={enterDoor}
+              onGoUp={() => setPath(path.split("/").slice(0, -1).join("/"))}
+              onOpenNote={(id) => openNote(id)}
+              onCreateNote={() => void createNote()}
+            />
+            <NoteEditor
+              key={active}
+              noteId={active}
+              reloadToken={noteReload}
+              onSaved={refresh}
+              onOpenNote={(id) => openNote(id)}
+            />
+          </>
+        ) : view === "constellation" ? (
           sky ? (
             <ConstellationView
               data={sky}
-              activeNoteId={noteId}
-              onEnterDoor={enterDoor}
-              onOpenNote={setNoteId}
+              activeNoteId={active}
+              onEnterDoor={(target) => {
+                enterDoor(target);
+                setView("scene");
+              }}
+              onOpenNote={(id) => openNote(id)}
             />
           ) : (
             <div className="boot">{error ?? "Assemblage de la constellation…"}</div>
@@ -174,25 +324,14 @@ export default function App() {
         ) : scene ? (
           <SceneView
             scene={scene}
-            activeNoteId={noteId}
+            activeNoteId={active}
             onEnterDoor={enterDoor}
-            onOpenNote={setNoteId}
-            onSceneChanged={() => void load()}
+            onOpenNote={(id) => openNote(id)}
+            onSceneChanged={refresh}
             onError={setError}
           />
         ) : (
           <div className="boot">{error ?? "Chargement de la scene…"}</div>
-        )}
-
-        {noteId && (
-          <NoteEditor
-            key={noteId}
-            noteId={noteId}
-            reloadToken={noteReload}
-            onClose={() => setNoteId(null)}
-            onSaved={() => void load()}
-            onOpenNote={setNoteId}
-          />
         )}
       </main>
 
@@ -201,9 +340,8 @@ export default function App() {
           onClose={() => setSearching(false)}
           onPick={(note) => {
             setSearching(false);
-            // On se place dans la scene qui contient la note, puis on l'ouvre.
-            if (view === "scene") setPath(note.parent);
-            setNoteId(note.id);
+            setPath(note.parent);
+            openNote(note.id, note.title);
           }}
         />
       )}

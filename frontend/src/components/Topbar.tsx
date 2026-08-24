@@ -8,6 +8,8 @@ interface Props {
   vault: VaultInfo;
   path: string;
   view: View;
+  /** Titre de la note ouverte, quand on est en train d'ecrire. */
+  editingTitle?: string;
   onNavigate: (path: string) => void;
   onChangeView: (view: View) => void;
   onSearch: () => void;
@@ -18,6 +20,7 @@ export function Topbar({
   vault,
   path,
   view,
+  editingTitle,
   onNavigate,
   onChangeView,
   onSearch,
@@ -31,7 +34,7 @@ export function Topbar({
         <button type="button" className="breadcrumb__root" onClick={() => onNavigate("")}>
           {vault.name}
         </button>
-        {view === "scene" &&
+        {(view === "scene" || editingTitle) &&
           segments.map((segment, index) => (
             <span key={segment + index} className="breadcrumb__step">
               <span className="breadcrumb__sep">›</span>
@@ -43,7 +46,15 @@ export function Topbar({
               </button>
             </span>
           ))}
-        {view === "constellation" && (
+        {editingTitle && (
+          <span className="breadcrumb__step">
+            <span className="breadcrumb__sep">›</span>
+            <button type="button" disabled>
+              {editingTitle}
+            </button>
+          </span>
+        )}
+        {view === "constellation" && !editingTitle && (
           <span className="breadcrumb__step">
             <span className="breadcrumb__sep">›</span>
             <button type="button" disabled>

@@ -48,6 +48,14 @@ def test_lien_resolu_par_le_chemin_complet(vault):
     assert vault.resolve_link("Projets/Mentaliis") == "Projets/Mentaliis.md"
 
 
+def test_une_image_embarquee_nest_pas_un_lien_de_note(vault):
+    # `![[schema.png]]` affiche une image ; il ne doit pas finir dans « a ecrire ».
+    vault.write_note("orpheline.md", "Voici ![[schema.png]] et [[Cap 2030]].\n")
+    links = vault.note_links("orpheline.md")
+    assert links.unresolved == []
+    assert [ref.id for ref in links.outgoing] == ["Vision/Cap 2030.md"]
+
+
 def test_note_sans_lien_na_pas_de_voisin(vault):
     links = vault.note_links("orpheline.md")
     assert not links.outgoing and not links.backlinks
@@ -138,6 +146,34 @@ def test_images_accrochees_a_une_note(vault):
     note = next(item for item in vault.scene("").notes if item.id == "orpheline.md")
     assert note.images[0].path == "Assets/photo.png"
     assert note.images[0].position.x == 90
+
+
+def test_une_image_se_trouve_par_son_seul_nom(vault):
+    (vault.root / "Vision" / "sous-dossier").mkdir(parents=True)
+    cible = vault.root / "Vision" / "sous-dossier" / "schema.png"
+    cible.write_bytes(b"png")
+    vault.invalidate_caches()
+    assert vault.find_asset("schema.png") == cible
+    assert vault.find_asset("schema") == cible
+    assert vault.find_asset("Vision/sous-dossier/schema.png") == cible
+
+
+def test_une_image_citee_avec_un_mauvais_chemin_est_quand_meme_trouvee(vault):
+    cible = vault.root / "Projets" / "photo.png"
+    cible.write_bytes(b"png")
+    vault.invalidate_caches()
+    # Le chemin est faux, mais le nom suffit a la retrouver.
+    assert vault.find_asset("ailleurs/photo.png") == cible
+
+
+def test_image_inconnue_ne_renvoie_rien(vault):
+    assert vault.find_asset("jamais-vue.png") is None
+
+
+def test_liste_des_images_du_vault(vault):
+    vault.import_file("une.png", b"a")
+    vault.import_file("deux.jpg", b"b")
+    assert vault.list_assets() == ["Assets/deux.jpg", "Assets/une.png"]
 
 
 def test_image_hors_du_vault_est_refusee(vault):

@@ -195,6 +195,21 @@ def get_file(path: str = Query(..., description="Chemin d'un fichier du Vault"))
     return FileResponse(target)
 
 
+@router.get("/asset")
+def get_asset(ref: str = Query(..., description="Nom ou chemin d'une image du Vault")):
+    """Sert une image citee par son seul nom, ou elle qu'elle soit dans le Vault."""
+    found = _guard(_vault().find_asset, ref)
+    if found is None or not found.is_file():
+        raise HTTPException(status_code=404, detail=f"Image introuvable : {ref}")
+    return FileResponse(found)
+
+
+@router.get("/assets", response_model=list[str])
+def get_assets():
+    """Toutes les images du Vault, pour les proposer a l'insertion."""
+    return _guard(_vault().list_assets)
+
+
 @router.post("/import")
 async def post_import(
     file: UploadFile = File(...),

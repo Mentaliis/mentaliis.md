@@ -67,6 +67,14 @@ class Vault:
         #: du disque ne les renvoie pas a l'interface comme des changements externes.
         self._own_writes: dict[str, float] = {}
 
+        #: Index des images du Vault, construit a la demande.
+        self._assets: dict[str, str] | None = None
+
+    def invalidate_caches(self) -> None:
+        """A appeler quand le disque a change sous nos pieds."""
+        self.links.invalidate()
+        self._assets = None
+
     def _touch(self, path: Path) -> None:
         now = time.time()
         self._own_writes[str(path.resolve())] = now
@@ -277,7 +285,51 @@ class Vault:
         target = _unique(destination / (_safe_name(Path(filename).stem) + suffix))
         target.write_bytes(data)
         self._touch(target)
+        self._assets = None
         return self.relative(target)
+
+    # --- Images du Vault ---
+
+    def _asset_index(self) -> dict[str, str]:
+        """Index de toutes les images, par nom de fichier et par chemin.
+
+        Une note peut donc ecrire `![[schema.png]]` sans se soucier du
+        sous-dossier ou l'image se trouve reellement.
+        """
+        if self._assets is not None:
+            return self._assets
+
+        index: dict[str, str] = {}
+        for file in self.root.rglob("*"):
+            if not file.is_file() or file.suffix.lower() not in IMAGE_EXTENSIONS:
+                continue
+            parts = file.relative_to(self.root).parts
+            if any(part in IGNORED_DIRS or part.startswith(".") for part in parts[:-1]):
+                continue
+            rel = self.relative(file)
+            # Le chemin complet est sans ambiguite ; le nom seul sert de
+            # raccourci, et le premier trouve gagne pour rester stable.
+            index[rel.lower()] = rel
+            index.setdefault(file.name.lower(), rel)
+            index.setdefault(file.stem.lower(), rel)
+
+        self._assets = index
+        return index
+
+    def find_asset(self, reference: str) -> Path | None:
+        """Retrouve une image citee par son nom seul, ou par son chemin."""
+        key = reference.strip().replace("\\", "/").lstrip("./").lower()
+        if not key:
+            return None
+        rel = self._asset_index().get(key)
+        if rel is None:
+            # Derniere chance : la reference contient un chemin, on garde le nom.
+            rel = self._asset_index().get(Path(key).name.lower())
+        return self.root / rel if rel else None
+
+    def list_assets(self) -> list[str]:
+        """Toutes les images du Vault, chemins relatifs, sans doublon."""
+        return sorted(set(self._asset_index().values()))
 
     # --- Operations communes ---
 

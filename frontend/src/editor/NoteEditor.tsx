@@ -1,47 +1,56 @@
-/** Panneau d'edition d'une note : source markdown, apercu rendu, et voisinage. */
+/**
+ * L'ecriture d'une note.
+ *
+ * Deux modes seulement : **ecriture**, ou le markdown se met en forme au fur et
+ * a mesure qu'on le tape, et **lecture**, qui verrouille le texte sans rien
+ * changer a son apparence. Les deux affichent exactement la meme chose : c'est
+ * le meme moteur de rendu, seul le clavier change.
+ */
 
-import { markdown } from "@codemirror/lang-markdown";
-import { EditorState } from "@codemirror/state";
-import { EditorView, keymap, highlightActiveLine, drawSelection } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import MarkdownIt from "markdown-it";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { EditorState, type Extension } from "@codemirror/state";
+import { EditorView, drawSelection, keymap, placeholder } from "@codemirror/view";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+} from "@codemirror/commands";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
+import { InsertMenu } from "./InsertMenu";
+import type { Insertion } from "./insertions";
+import { livePreview } from "./livePreview";
 import { mentaliisTheme } from "./theme";
-import { wikilinks } from "./wikilinks";
 
-const AUTOSAVE_DELAY = 700;
+const AUTOSAVE_DELAY = 600;
+
+export type Mode = "ecriture" | "lecture";
 
 interface Props {
   noteId: string;
   /** Increment a chaque changement externe : force le rechargement depuis le disque. */
   reloadToken?: number;
-  onClose: () => void;
   onSaved: () => void;
   onOpenNote: (id: string) => void;
 }
 
-type Mode = "ecriture" | "apercu";
-
-export function NoteEditor({ noteId, reloadToken, onClose, onSaved, onOpenNote }: Props) {
+export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) {
   const [note, setNote] = useState<Note | null>(null);
+  /** Titre lu dans le texte en cours : il change des qu'on modifie le premier titre. */
+  const [liveTitle, setLiveTitle] = useState<string | null>(null);
   const [links, setLinks] = useState<NoteLinks | null>(null);
   const [mode, setMode] = useState<Mode>("ecriture");
   const [status, setStatus] = useState<"pret" | "modifie" | "enregistre">("pret");
   const [error, setError] = useState<string | null>(null);
+  const [inserting, setInserting] = useState(false);
+  const [showLinks, setShowLinks] = useState(true);
 
   const host = useRef<HTMLDivElement>(null);
-  const content = useRef<string>("");
+  const view = useRef<EditorView | null>(null);
+  const content = useRef("");
   const timer = useRef<number | null>(null);
-
-  const md = useMemo(
-    () =>
-      new MarkdownIt({ html: false, linkify: true, breaks: true, typographer: true }).use(
-        wikilinks,
-      ),
-    [],
-  );
 
   const refreshLinks = useCallback(() => {
     api
@@ -50,85 +59,7 @@ export function NoteEditor({ noteId, reloadToken, onClose, onSaved, onOpenNote }
       .catch(() => setLinks(null));
   }, [noteId]);
 
-  // Charge la note demandee, et la recharge si le disque a change sous nos pieds.
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .note(noteId)
-      .then((loaded) => {
-        if (cancelled) return;
-        setNote(loaded);
-        content.current = loaded.content;
-        setStatus("pret");
-        setError(null);
-      })
-      .catch((problem: Error) => !cancelled && setError(problem.message));
-    refreshLinks();
-    return () => {
-      cancelled = true;
-    };
-  }, [noteId, reloadToken, refreshLinks]);
-
-  // Monte CodeMirror une fois la note chargee et le mode ecriture actif.
-  // `reloadToken` fait partie des dependances : un changement externe doit
-  // reconstruire l'editeur sur le nouveau contenu, pas garder l'ancien.
-  const loaded = note !== null;
-  useEffect(() => {
-    if (!loaded || mode !== "ecriture" || !host.current) return;
-
-    const save = (text: string) => {
-      content.current = text;
-      setStatus("modifie");
-      if (timer.current) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(async () => {
-        timer.current = null;
-        try {
-          await api.saveNote(noteId, text);
-          setStatus("enregistre");
-          onSaved();
-          refreshLinks();
-        } catch (problem) {
-          setError((problem as Error).message);
-        }
-      }, AUTOSAVE_DELAY);
-    };
-
-    const editor = new EditorView({
-      state: EditorState.create({
-        doc: content.current,
-        extensions: [
-          history(),
-          drawSelection(),
-          highlightActiveLine(),
-          keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-          // Sans `codeLanguages` : la coloration de chaque langage ne serait pas
-          // chargee a la demande, elle pese 700 ko a elle seule.
-          markdown(),
-          EditorView.lineWrapping,
-          mentaliisTheme,
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) save(update.state.doc.toString());
-          }),
-        ],
-      }),
-      parent: host.current,
-    });
-    editor.focus();
-
-    return () => editor.destroy();
-  }, [loaded, mode, noteId, reloadToken, onSaved, refreshLinks]);
-
-  // Enregistre immediatement ce qui reste en attente avant de fermer.
-  useEffect(() => {
-    return () => {
-      if (timer.current) {
-        window.clearTimeout(timer.current);
-        void api.saveNote(noteId, content.current).catch(() => undefined);
-      }
-    };
-  }, [noteId]);
-
-  /** Ouvre la note visee par un [[wikilink]], ou la cree si elle n'existe pas. */
+  /** Ouvre la note visee par un [[lien]], ou propose de la creer. */
   const followLink = useCallback(
     async (target: string) => {
       try {
@@ -149,130 +80,337 @@ export function NoteEditor({ noteId, reloadToken, onClose, onSaved, onOpenNote }
     [note?.parent, onOpenNote, onSaved],
   );
 
-  const onPreviewClick = (event: React.MouseEvent) => {
-    const anchor = (event.target as HTMLElement).closest<HTMLElement>(".wikilink");
-    if (!anchor) return;
-    event.preventDefault();
-    void followLink(anchor.dataset.target ?? "");
-  };
+  // --- Chargement de la note ---
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .note(noteId)
+      .then((loaded) => {
+        if (cancelled) return;
+        setNote(loaded);
+        content.current = loaded.content;
+        setLiveTitle(headingOf(loaded.content));
+        setStatus("pret");
+        setError(null);
+      })
+      .catch((problem: Error) => !cancelled && setError(problem.message));
+    refreshLinks();
+    return () => {
+      cancelled = true;
+    };
+  }, [noteId, reloadToken, refreshLinks]);
+
+  // --- Montage de l'editeur ---
+
+  const loaded = note !== null;
+  const readOnly = mode === "lecture";
+
+  useEffect(() => {
+    if (!loaded || !host.current) return;
+
+    const save = (text: string) => {
+      content.current = text;
+      setLiveTitle(headingOf(text));
+      setStatus("modifie");
+      if (timer.current) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(async () => {
+        timer.current = null;
+        try {
+          await api.saveNote(noteId, text);
+          setStatus("enregistre");
+          onSaved();
+          refreshLinks();
+        } catch (problem) {
+          setError((problem as Error).message);
+        }
+      }, AUTOSAVE_DELAY);
+    };
+
+    const extensions: Extension[] = [
+      history(),
+      drawSelection(),
+      keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
+      // `markdownLanguage` en base : c'est lui qui apporte les tableaux,
+      // les cases a cocher et le texte barre.
+      markdown({ base: markdownLanguage }),
+      EditorView.lineWrapping,
+      mentaliisTheme,
+      livePreview((target) => void followLink(target)),
+      placeholder("Ecrivez ici. Tapez « # » pour un titre, « - [ ] » pour une case."),
+    ];
+
+    if (readOnly) {
+      extensions.push(EditorState.readOnly.of(true), EditorView.editable.of(false));
+    } else {
+      // Pas de surlignage de ligne active : sur un titre, la bande grise
+      // ecrase la mise en forme au lieu de l'aider.
+      extensions.push(
+        EditorView.updateListener.of((update) => {
+          if (update.docChanged) save(update.state.doc.toString());
+        }),
+      );
+    }
+
+    const editor = new EditorView({
+      state: EditorState.create({ doc: content.current, extensions }),
+      parent: host.current,
+    });
+    view.current = editor;
+    if (!readOnly) editor.focus();
+
+    return () => {
+      editor.destroy();
+      view.current = null;
+    };
+  }, [loaded, noteId, onSaved, readOnly, reloadToken, refreshLinks, followLink]);
+
+  // Ctrl+E bascule entre ecrire et lire, sans quitter la note.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        setMode((current) => (current === "ecriture" ? "lecture" : "ecriture"));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Enregistre ce qui reste en attente avant de quitter la note.
+  useEffect(() => {
+    return () => {
+      if (timer.current) {
+        window.clearTimeout(timer.current);
+        void api.saveNote(noteId, content.current).catch(() => undefined);
+      }
+    };
+  }, [noteId]);
+
+  // --- Insertions ---
+
+  /** Insere un fragment ; le « | » du modele indique ou laisser le curseur. */
+  const insert = useCallback((snippet: string, block = false) => {
+    const editor = view.current;
+    if (!editor) return;
+
+    const range = editor.state.selection.main;
+    const line = editor.state.doc.lineAt(range.from);
+    // Un bloc commence toujours sur sa propre ligne.
+    const prefix = block && line.text.trim() !== "" ? "\n" : "";
+
+    const caret = snippet.indexOf("|");
+    const text = prefix + snippet.replace("|", "");
+    const at = range.from + prefix.length + (caret === -1 ? text.length - prefix.length : caret);
+
+    editor.dispatch({
+      changes: { from: range.from, to: range.to, insert: text },
+      selection: { anchor: at },
+      scrollIntoView: true,
+    });
+    editor.focus();
+  }, []);
+
+  /** Insere un symbole, en ouvrant une formule si le curseur n'est pas deja dedans. */
+  const insertSymbol = useCallback(
+    (latex: string) => {
+      const editor = view.current;
+      if (!editor) return;
+      const range = editor.state.selection.main;
+      const line = editor.state.doc.lineAt(range.from);
+      const before = line.text.slice(0, range.from - line.from);
+      // Un nombre impair de « $ » avant le curseur signifie qu'une formule est ouverte.
+      const insideFormula = (before.match(/\$/g)?.length ?? 0) % 2 === 1;
+      insert(insideFormula ? `${latex} |` : `$${latex} |$`);
+    },
+    [insert],
+  );
+
+  const insertImage = useCallback((path: string) => insert(`![[${path}]]\n|`, true), [insert]);
+
+  const upload = useCallback(
+    async (file: File) => {
+      try {
+        insertImage(await api.importFile(file));
+      } catch (problem) {
+        setError((problem as Error).message);
+      }
+    },
+    [insertImage],
+  );
+
+  // Deposer une image directement dans le texte l'insere a cet endroit.
+  const onDrop = useCallback(
+    async (event: React.DragEvent) => {
+      const files = Array.from(event.dataTransfer.files).filter((file) =>
+        file.type.startsWith("image/"),
+      );
+      if (!files.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      for (const file of files) await upload(file);
+    },
+    [upload],
+  );
 
   if (error && !note) {
-    return (
-      <aside className="editor">
-        <div className="editor__error">{error}</div>
-      </aside>
-    );
+    return <div className="editor__error">{error}</div>;
   }
 
   if (!note) {
-    return (
-      <aside className="editor">
-        <div className="editor__loading">Ouverture…</div>
-      </aside>
-    );
+    return <div className="editor__loading">Ouverture…</div>;
   }
 
-  const neighbours = (links?.backlinks.length ?? 0) + (links?.outgoing.length ?? 0);
+  const neighbours =
+    (links?.backlinks.length ?? 0) + (links?.outgoing.length ?? 0) + (links?.unresolved.length ?? 0);
 
   return (
-    <aside className="editor">
+    <section className="editor">
       <header className="editor__head">
         <div className="editor__identity">
-          <h2>{note.title}</h2>
+          <h2>{liveTitle || note.title}</h2>
           <span className="editor__path">{note.id}</span>
         </div>
+
         <div className="editor__actions">
-          <button
-            type="button"
-            className={mode === "ecriture" ? "is-active" : ""}
-            onClick={() => setMode("ecriture")}
-          >
-            Ecrire
-          </button>
-          <button
-            type="button"
-            className={mode === "apercu" ? "is-active" : ""}
-            onClick={() => setMode("apercu")}
-          >
-            Apercu
-          </button>
-          <button type="button" className="editor__close" onClick={onClose} title="Fermer">
-            ×
-          </button>
+          {mode === "ecriture" && (
+            <div className="editor__insert">
+              <button
+                type="button"
+                className={`editor__plus${inserting ? " is-active" : ""}`}
+                title="Inserer un bloc, un symbole ou une image"
+                onClick={() => setInserting((open) => !open)}
+              >
+                +
+              </button>
+              {inserting && (
+                <InsertMenu
+                  onInsert={(item: Insertion) => insert(item.snippet, item.block)}
+                  onSymbol={insertSymbol}
+                  onImage={insertImage}
+                  onUpload={upload}
+                  onClose={() => setInserting(false)}
+                />
+              )}
+            </div>
+          )}
+
+          <div className="editor__modes">
+            <button
+              type="button"
+              className={mode === "ecriture" ? "is-active" : ""}
+              onClick={() => setMode("ecriture")}
+              title="Ecrire (Ctrl+E)"
+            >
+              Ecriture
+            </button>
+            <button
+              type="button"
+              className={mode === "lecture" ? "is-active" : ""}
+              onClick={() => setMode("lecture")}
+              title="Lire sans pouvoir modifier (Ctrl+E)"
+            >
+              Lecture
+            </button>
+          </div>
         </div>
       </header>
 
-      {mode === "ecriture" ? (
-        <div ref={host} className="editor__surface" />
-      ) : (
-        <div
-          className="editor__surface markdown-body"
-          onClick={onPreviewClick}
-          dangerouslySetInnerHTML={{ __html: md.render(content.current) }}
-        />
-      )}
+      <div
+        ref={host}
+        className={`editor__surface${readOnly ? " is-locked" : ""}`}
+        onDrop={onDrop}
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes("Files")) event.preventDefault();
+        }}
+      />
 
-      {links && neighbours + links.unresolved.length > 0 && (
-        <section className="links">
-          {links.backlinks.length > 0 && (
-            <div className="links__group">
-              <h3>Cite par</h3>
-              <ul>
-                {links.backlinks.map((ref) => (
-                  <li key={ref.id}>
-                    <button type="button" onClick={() => onOpenNote(ref.id)}>
-                      {ref.title}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      {links && neighbours > 0 && (
+        <section className={`links${showLinks ? "" : " is-folded"}`}>
+          <button
+            type="button"
+            className="links__toggle"
+            onClick={() => setShowLinks((open) => !open)}
+          >
+            {showLinks ? "▾" : "▸"} Voisinage · {neighbours}
+          </button>
 
-          {links.outgoing.length > 0 && (
-            <div className="links__group">
-              <h3>Cite</h3>
-              <ul>
-                {links.outgoing.map((ref) => (
-                  <li key={ref.id}>
-                    <button type="button" onClick={() => onOpenNote(ref.id)}>
-                      {ref.title}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {links.unresolved.length > 0 && (
-            <div className="links__group">
-              <h3>A ecrire</h3>
-              <ul>
-                {links.unresolved.map((target) => (
-                  <li key={target}>
-                    <button
-                      type="button"
-                      className="is-missing"
-                      onClick={() => void followLink(target)}
-                    >
-                      {target}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+          {showLinks && (
+            <div className="links__groups">
+              <LinkGroup
+                title="Cite par"
+                items={links.backlinks.map((ref) => ({ key: ref.id, label: ref.title }))}
+                onPick={(key) => onOpenNote(key)}
+              />
+              <LinkGroup
+                title="Cite"
+                items={links.outgoing.map((ref) => ({ key: ref.id, label: ref.title }))}
+                onPick={(key) => onOpenNote(key)}
+              />
+              <LinkGroup
+                title="A ecrire"
+                missing
+                items={links.unresolved.map((target) => ({ key: target, label: target }))}
+                onPick={(key) => void followLink(key)}
+              />
             </div>
           )}
         </section>
       )}
 
       <footer className="editor__status">
-        {error && <span className="editor__status-error">{error}</span>}
-        {!error && status === "modifie" && "Enregistrement…"}
-        {!error && status === "enregistre" && "Enregistre"}
-        {!error &&
-          status === "pret" &&
-          `${note.tags.length} tag${note.tags.length > 1 ? "s" : ""}`}
+        <span>
+          {error && <span className="editor__status-error">{error}</span>}
+          {!error && status === "modifie" && "Enregistrement…"}
+          {!error && status === "enregistre" && "Enregistre"}
+          {!error && status === "pret" && (readOnly ? "Lecture seule" : "Pret")}
+        </span>
+        <span className="editor__counts">
+          {countWords(content.current)} mots · {note.tags.length} tag
+          {note.tags.length > 1 ? "s" : ""}
+        </span>
       </footer>
-    </aside>
+    </section>
   );
+}
+
+function LinkGroup({
+  title,
+  items,
+  missing = false,
+  onPick,
+}: {
+  title: string;
+  items: { key: string; label: string }[];
+  missing?: boolean;
+  onPick: (key: string) => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <div className="links__group">
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item) => (
+          <li key={item.key}>
+            <button
+              type="button"
+              className={missing ? "is-missing" : ""}
+              onClick={() => onPick(item.key)}
+            >
+              {item.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function countWords(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
+}
+
+/** Premier titre de la note, qui fait office de nom affiche. */
+function headingOf(text: string): string | null {
+  return /^#\s+(.+)$/m.exec(text)?.[1].trim() ?? null;
 }

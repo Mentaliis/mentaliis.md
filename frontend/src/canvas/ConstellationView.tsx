@@ -42,6 +42,16 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
     );
   }, [fit, data]);
 
+  /** Zoome autour du centre de la vue, pas du coin. */
+  const { zoomBy } = viewport;
+  const zoom = useCallback(
+    (factor: number) => {
+      const element = surface.current;
+      zoomBy(factor, element?.clientWidth, element?.clientHeight);
+    },
+    [zoomBy],
+  );
+
   const moveLocal = useCallback((id: string, position: Position) => {
     setPositions((prev) => ({ ...prev, [id]: position }));
   }, []);
@@ -94,12 +104,7 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
         onPointerUp={viewport.onPointerUp}
         onPointerCancel={viewport.onPointerUp}
       >
-        <div
-          className="scene__world"
-          style={{
-            transform: `translate(${viewport.camera.x}px, ${viewport.camera.y}px) scale(${viewport.camera.scale})`,
-          }}
-        >
+        <div className="scene__world" style={viewport.worldStyle}>
           <svg
             className="sky__threads"
             style={{ left: bounds.left, top: bounds.top }}
@@ -167,10 +172,10 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
       </div>
 
       <div className="scene__controls">
-        <button type="button" onClick={() => viewport.zoomBy(1.2)} title="Zoomer">
+        <button type="button" onClick={() => zoom(1.25)} title="Zoomer">
           +
         </button>
-        <button type="button" onClick={() => viewport.zoomBy(1 / 1.2)} title="Dezoomer">
+        <button type="button" onClick={() => zoom(1 / 1.25)} title="Dezoomer">
           −
         </button>
         <button

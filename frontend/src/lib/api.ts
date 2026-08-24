@@ -97,8 +97,14 @@ export const api = {
   // --- Recherche ---
   search: (q: string) => request<NoteSummary[]>(`/search?q=${encodeURIComponent(q)}`),
 
-  /** URL d'un fichier du Vault (image de couverture, image attachee). */
+  /** URL d'un fichier du Vault, designe par son chemin exact. */
   fileUrl: (path: string) => `${BASE}/file?path=${encodeURIComponent(path)}`,
+
+  /** URL d'une image citee par son seul nom, ou qu'elle soit dans le Vault. */
+  assetUrl: (reference: string) => `${BASE}/asset?ref=${encodeURIComponent(reference)}`,
+
+  /** Toutes les images du Vault, pour les proposer a l'insertion. */
+  assets: () => request<string[]>("/assets"),
 
   /** Range dans le Vault un fichier depose depuis l'exterieur. */
   async importFile(file: File, folder = "Assets"): Promise<string> {

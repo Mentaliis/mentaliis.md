@@ -1,0 +1,27 @@
+# --- Node / frontend ---
+node_modules/
+dist/
+.vite/
+*.local
+
+# --- Python / engine ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# --- Rust / Tauri ---
+src-tauri/target/
+src-tauri/binaries/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Mentaliis ---
+# Les vaults de test ne sont pas versionnes
+vaults/
+.mentaliis-dev/

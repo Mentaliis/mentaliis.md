@@ -17,6 +17,7 @@ Aucun serveur distant, aucune connexion internet requise : tout est local.
 
 ```
 MENTALIIS/
+  package.json  Point d'entree : `npm run dev` lance toute l'application
   src-tauri/    Coquille native (Rust minimal) : la fenetre de l'application
   frontend/     L'univers visuel : portes, canvas, notes, editeur markdown (React + TS)
   engine/       Le moteur Python : Vault, parsing markdown, index, recherche (FastAPI local)
@@ -57,37 +58,56 @@ Le moteur s'eteint automatiquement avec la fenetre.
 - **Rust** (pour Tauri) : https://rustup.rs
 - Windows : [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) + WebView2 (deja present sur Windows 10/11 a jour)
 
-## Demarrage rapide (developpement)
+## Installation
 
-Deux terminaux.
-
-**1. Le moteur Python**
+Une seule fois :
 
 ```bash
+# le moteur
 cd engine
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS / Linux
 pip install -e ".[dev]"
-python -m mentaliis_engine.main
+cd ..
+
+# l'interface et la coquille native
+npm install --prefix frontend
+npm install
 ```
 
-Le moteur ecoute sur `http://127.0.0.1:8756`.
-Documentation interactive de l'API : `http://127.0.0.1:8756/docs`
+## Lancer l'application
 
-**2. L'interface**
+Depuis la **racine du projet**, une seule commande :
 
 ```bash
-cd frontend
-npm install
 npm run dev
 ```
 
-Puis ouvrir l'URL affichee, ou lancer la vraie fenetre native :
+Elle demarre tout : la fenetre native, le serveur de developpement de l'interface,
+et le moteur Python — qui s'arrete automatiquement a la fermeture de la fenetre.
+
+> La CLI Tauri cherche `tauri.conf.json` dans un sous-dossier de son dossier courant.
+> Elle doit donc etre lancee depuis la racine, jamais depuis `frontend/`.
+
+### Sans fenetre native (dans un navigateur)
+
+Utile quand Rust n'est pas installe. Deux terminaux :
 
 ```bash
-cd frontend
-npm run tauri dev
+cd engine && .venv\Scripts\python -m mentaliis_engine.main
+```
+```bash
+cd frontend && npm run dev
+```
+
+Puis ouvrir `http://localhost:1420`.
+Documentation interactive de l'API : `http://127.0.0.1:8756/docs`
+
+## Produire l'application installable
+
+```bash
+npm run build
 ```
 
 ---

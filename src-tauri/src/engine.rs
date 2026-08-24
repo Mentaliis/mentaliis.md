@@ -6,7 +6,10 @@
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
+// `Manager` ne sert qu'a retrouver le binaire embarque, donc uniquement en production.
+#[cfg(not(debug_assertions))]
+use tauri::Manager;
 
 /// Le processus du moteur, garde pour pouvoir l'arreter.
 pub struct EngineHandle(Mutex<Option<Child>>);

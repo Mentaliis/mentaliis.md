@@ -93,13 +93,27 @@ npm run tauri dev
 
 ## Etat du projet
 
-Squelette initial. Ce qui fonctionne deja :
+Ce qui fonctionne :
 
-- lecture d'un Vault (dossiers -> portes, `.md` -> notes) ;
-- lecture / ecriture du contenu d'une note ;
-- persistance des positions spatiales dans `.mentaliis/layout.json` ;
-- canvas pan / zoom, portes et notes deplacables ;
-- editeur markdown avec apercu.
+- **Vault** : ouverture d'un dossier racine, memorise et rouvert au lancement suivant.
+- **Portes** : chaque dossier est une porte, avec son image de vision au-dessus.
+- **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
+- **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
+- **Editeur** markdown (CodeMirror 6), enregistrement automatique, apercu rendu.
+- **Liens `[[wikilink]]`** : cliquables dans l'apercu, avec backlinks et liens a ecrire.
+- **Constellation** : tout le Vault d'un coup d'oeil, les liens tires en fils entre les notes.
+- **Glisser-deposer** d'images : sur une porte pour sa vision, sur une note pour l'illustrer.
+- **Surveillance du disque** : une note modifiee dans un autre editeur apparait ici aussitot.
+- **Recherche** plein texte (Ctrl+K), **corbeille** dans `.mentaliis/trash/`.
 
-A venir : liens `[[wikilink]]` et backlinks, recherche plein texte, images attachees,
-images de couverture des portes, tags et proprietes, vue constellation globale.
+### Raccourcis
+
+| Touche | Effet |
+|--------|-------|
+| `Ctrl+K` | Rechercher dans tout le Vault |
+| `Ctrl+G` | Basculer entre les portes et la constellation |
+| `Echap` | Refermer la note ouverte |
+| Clic droit | Creer, renommer, supprimer |
+| Molette | Zoomer / dezoomer |
+
+A venir : tags et proprietes navigables, historique des versions, themes, greffons.

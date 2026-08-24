@@ -69,6 +69,43 @@ class VaultInfo(BaseModel):
     opened: bool = True
 
 
+# --- Liens entre notes ---
+
+
+class LinkRef(BaseModel):
+    """Une note reliee a une autre par un [[wikilink]]."""
+
+    id: str
+    title: str
+    #: le texte tel qu'ecrit dans la note, utile quand il ne resout rien
+    label: str = ""
+
+
+class NoteLinks(BaseModel):
+    """Le voisinage d'une note dans le reseau du Vault."""
+
+    id: str
+    outgoing: list[LinkRef] = Field(default_factory=list)
+    backlinks: list[LinkRef] = Field(default_factory=list)
+    #: liens ecrits vers des notes qui n'existent pas encore
+    unresolved: list[str] = Field(default_factory=list)
+
+
+class Edge(BaseModel):
+    """Un lien entre deux notes, pour la vue constellation."""
+
+    source: str
+    target: str
+
+
+class Constellation(BaseModel):
+    """Tout le Vault d'un seul coup d'oeil."""
+
+    doors: list[Door] = Field(default_factory=list)
+    notes: list[NoteSummary] = Field(default_factory=list)
+    edges: list[Edge] = Field(default_factory=list)
+
+
 # --- Corps de requetes ---
 
 
@@ -105,3 +142,9 @@ class SetCoverRequest(BaseModel):
     """Image de couverture d'une porte (chemin relatif au Vault, ou null pour retirer)."""
 
     cover: str | None = None
+
+
+class SetImagesRequest(BaseModel):
+    """Les images accrochees autour d'une note."""
+
+    images: list[AttachedImage] = Field(default_factory=list)

@@ -287,6 +287,42 @@ code {
   gap: 6px;
 }
 
+.topbar__views {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  margin-right: 4px;
+  background: var(--bg-raised);
+  border-radius: 9px;
+}
+
+.topbar__views button {
+  padding: 5px 11px;
+  font-size: 12px;
+  color: var(--text-faint);
+  border: none;
+  border-radius: 7px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.topbar__views button:hover {
+  color: var(--text);
+}
+
+.topbar__views button.is-active {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.breadcrumb button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.breadcrumb button:disabled:hover {
+  background: none;
+}
+
 .topbar__actions button {
   padding: 6px 12px;
   font-size: 12px;
@@ -565,16 +601,48 @@ code {
   left: 50%;
   width: 72px;
   height: 72px;
+  margin: -36px 0 0 -36px;
   color: var(--line-strong);
-  pointer-events: none;
+  cursor: grab;
+  transition: transform var(--fast) var(--ease);
+}
+
+.note__pinned:hover {
+  z-index: 4;
+  color: var(--accent);
+}
+
+.note__pinned:hover img {
+  border-color: var(--accent);
+}
+
+.note__pinned.is-dragging {
+  z-index: 5;
+  cursor: grabbing;
 }
 
 .note__pinned img {
+  position: relative;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  background: var(--bg-raised);
   border: 1px solid var(--line-strong);
   border-radius: 6px;
+  box-shadow: 0 8px 20px -10px rgba(0, 0, 0, 0.9);
+  transition: border-color var(--fast) var(--ease);
+}
+
+/* Cible d'un depot d'image. */
+.node.is-drop-target .note__card,
+.node.is-drop-target .door__vision,
+.node.is-drop-target .door__frame {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft), 0 0 26px -6px var(--accent);
+}
+
+.node.is-drop-target .door__vision-empty {
+  color: var(--accent);
 }
 
 .note__thread {
@@ -584,6 +652,127 @@ code {
   overflow: visible;
   width: 1px;
   height: 1px;
+}
+
+/* ------------------------------------------ Constellation (vue globale) */
+
+.scene__surface--sky {
+  background:
+    radial-gradient(70% 60% at 50% 45%, #101b31 0%, transparent 72%),
+    var(--bg-deep);
+}
+
+.sky__threads {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.sky__thread {
+  stroke: rgba(140, 170, 220, 0.16);
+  stroke-width: 1;
+  transition: stroke var(--slow) var(--ease), stroke-width var(--slow) var(--ease);
+}
+
+.sky__thread.is-lit {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+}
+
+.star {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 130px;
+  margin: -7px 0 0 -65px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity var(--slow) var(--ease);
+  animation: fade var(--slow) var(--ease);
+}
+
+.star.is-dimmed {
+  opacity: 0.28;
+}
+
+.star.is-dragging {
+  z-index: 10;
+  cursor: grabbing;
+}
+
+.star__dot {
+  display: grid;
+  place-content: center;
+  width: 14px;
+  height: 14px;
+  overflow: hidden;
+  background: var(--text-dim);
+  border-radius: 50%;
+  transition:
+    transform var(--slow) var(--ease),
+    background var(--fast) var(--ease),
+    box-shadow var(--slow) var(--ease);
+}
+
+.star__dot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Une porte est un noyau : plus grosse, elle structure le ciel. */
+.star--door .star__dot {
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(180deg, #2c4a85 0%, #16233d 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+}
+
+.star:hover .star__dot {
+  transform: scale(1.22);
+  background: var(--accent);
+  box-shadow: 0 0 22px -3px var(--accent);
+}
+
+.star.is-active .star__dot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.star__label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--text-dim);
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--fast) var(--ease);
+}
+
+.star--door .star__label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.star:hover .star__label {
+  color: var(--text);
+}
+
+.sky__legend {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  font-size: 11px;
+  color: var(--text-faint);
+  pointer-events: none;
 }
 
 /* -------------------------------------------------- Menu contextuel */
@@ -768,6 +957,77 @@ code {
   font-size: 11px;
   color: var(--text-faint);
   border-top: 1px solid var(--line);
+}
+
+.editor__status-error {
+  color: var(--danger);
+}
+
+/* ---------------------------------------- Voisinage d'une note */
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  max-height: 30vh;
+  padding: 12px 18px;
+  overflow-y: auto;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--line);
+}
+
+.links__group {
+  min-width: 140px;
+}
+
+.links__group h3 {
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.links__group ul {
+  list-style: none;
+}
+
+.links__group button {
+  display: block;
+  padding: 3px 0;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--accent);
+  transition: filter var(--fast) var(--ease);
+}
+
+.links__group button:hover {
+  filter: brightness(1.25);
+  text-decoration: underline;
+}
+
+/* Une note citee mais pas encore ecrite. */
+.links__group button.is-missing {
+  color: var(--text-faint);
+  text-decoration: underline dotted;
+}
+
+.links__group button.is-missing:hover {
+  color: var(--text-dim);
+}
+
+/* Un [[wikilink]] dans l'apercu rendu. */
+.markdown-body .wikilink {
+  padding: 1px 3px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.markdown-body .wikilink:hover {
+  filter: brightness(1.2);
 }
 
 .editor__loading,

@@ -14,6 +14,7 @@ interface Props {
   onEnterDoor: (path: string) => void;
   onOpenNote: (id: string) => void;
   onSceneChanged: () => void;
+  onError: (message: string) => void;
 }
 
 interface Menu {
@@ -28,6 +29,7 @@ export function SceneView({
   onEnterDoor,
   onOpenNote,
   onSceneChanged,
+  onError,
 }: Props) {
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
@@ -74,7 +76,7 @@ export function SceneView({
   );
 
   const itemMenu = useCallback(
-    (id: string, name: string, isDoor: boolean): MenuItem[] => [
+    (id: string, name: string, hasCover: boolean | null): MenuItem[] => [
       {
         label: "Renommer",
         action: async () => {
@@ -85,18 +87,15 @@ export function SceneView({
           }
         },
       },
-      ...(isDoor
+      // L'image de vision se pose en la lachant sur la porte : ne reste ici
+      // que le moyen de la retirer.
+      ...(hasCover
         ? [
             {
-              label: "Definir l'image de vision",
+              label: "Retirer l'image de vision",
               action: async () => {
-                const path = window.prompt(
-                  "Chemin de l'image, relatif au Vault (ex. Assets/vision.jpg)",
-                );
-                if (path !== null) {
-                  await api.setCover(id, path.trim() || null);
-                  onSceneChanged();
-                }
+                await api.setCover(id, null);
+                onSceneChanged();
               },
             },
           ]
@@ -170,7 +169,11 @@ export function SceneView({
               onMove={(position) => moveLocal(door.id, position)}
               onCommit={(position) => commit(door.id, position)}
               onEnter={() => onEnterDoor(door.id)}
-              onContextMenu={(event) => openMenu(event, itemMenu(door.id, door.name, true))}
+              onChanged={onSceneChanged}
+              onError={onError}
+              onContextMenu={(event) =>
+                openMenu(event, itemMenu(door.id, door.name, Boolean(door.cover)))
+              }
             />
           ))}
 
@@ -183,7 +186,9 @@ export function SceneView({
               onMove={(position) => moveLocal(note.id, position)}
               onCommit={(position) => commit(note.id, position)}
               onOpen={() => onOpenNote(note.id)}
-              onContextMenu={(event) => openMenu(event, itemMenu(note.id, note.title, false))}
+              onChanged={onSceneChanged}
+              onError={onError}
+              onContextMenu={(event) => openMenu(event, itemMenu(note.id, note.title, null))}
             />
           ))}
         </div>

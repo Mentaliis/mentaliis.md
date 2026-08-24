@@ -5,25 +5,32 @@ Toutes ces routes ne sont joignables que depuis la machine locale.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+import asyncio
+import contextlib
+
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 
 from ..models import (
+    Constellation,
     CreateDoorRequest,
     CreateNoteRequest,
     Door,
     MoveRequest,
     Note,
+    NoteLinks,
     NoteSummary,
     OpenVaultRequest,
     RenameRequest,
     SaveNoteRequest,
     SceneResponse,
     SetCoverRequest,
+    SetImagesRequest,
     VaultInfo,
 )
 from ..vault import VaultError, current_vault, open_vault
-from ..vault.vault import last_vault
+from ..vault.vault import ASSETS_DIR, last_vault
+from ..watcher import watcher
 
 router = APIRouter()
 
@@ -68,8 +75,11 @@ def get_last_vault() -> dict:
 
 
 @router.post("/vault/open", response_model=VaultInfo)
-def post_open_vault(payload: OpenVaultRequest) -> VaultInfo:
-    return _guard(lambda: open_vault(payload.path).info())
+async def post_open_vault(payload: OpenVaultRequest) -> VaultInfo:
+    vault = _guard(open_vault, payload.path)
+    # La surveillance suit toujours le Vault ouvert.
+    await watcher.watch(vault)
+    return vault.info()
 
 
 # --- Scenes ---
@@ -96,6 +106,40 @@ def put_note(payload: SaveNoteRequest, id: str = Query(...)):
 @router.post("/note", response_model=NoteSummary)
 def post_note(payload: CreateNoteRequest):
     return _guard(_vault().create_note, payload.parent, payload.title)
+
+
+@router.put("/note/images", response_model=NoteSummary)
+def put_note_images(payload: SetImagesRequest, id: str = Query(...)):
+    return _guard(_vault().set_images, id, payload.images)
+
+
+# --- Liens entre notes ---
+
+
+@router.get("/links", response_model=NoteLinks)
+def get_links(id: str = Query(..., description="Note dont on veut le voisinage")):
+    return _guard(_vault().note_links, id)
+
+
+@router.get("/links/resolve")
+def get_resolve_link(target: str = Query(..., description="Texte d'un [[wikilink]]")):
+    """Dit vers quelle note pointe un lien, ou None si elle reste a ecrire."""
+    return {"id": _guard(_vault().resolve_link, target)}
+
+
+# --- Vue d'ensemble ---
+
+
+@router.get("/constellation", response_model=Constellation)
+def get_constellation():
+    return _guard(_vault().constellation)
+
+
+@router.put("/move/global")
+def put_move_global(payload: MoveRequest) -> dict:
+    """Position dans la vue d'ensemble, distincte de celle dans la scene."""
+    _guard(_vault().move_globally, payload.id, payload.position.x, payload.position.y)
+    return {"ok": True}
 
 
 # --- Portes ---
@@ -149,3 +193,38 @@ def get_file(path: str = Query(..., description="Chemin d'un fichier du Vault"))
     if not target.is_file():
         raise HTTPException(status_code=404, detail="Fichier introuvable.")
     return FileResponse(target)
+
+
+@router.post("/import")
+async def post_import(
+    file: UploadFile = File(...),
+    folder: str = Query(ASSETS_DIR, description="Ou ranger le fichier dans le Vault"),
+) -> dict:
+    """Range dans le Vault un fichier depose depuis l'exterieur."""
+    data = await file.read()
+    path = _guard(_vault().import_file, file.filename or "image", data, folder)
+    return {"path": path}
+
+
+# --- Changements venus du disque ---
+
+
+@router.websocket("/events")
+async def events(socket: WebSocket) -> None:
+    """Previent l'interface quand le Vault change en dehors de l'application."""
+    await socket.accept()
+    queue = watcher.subscribe()
+    try:
+        while True:
+            # Un ping regulier detecte une interface partie sans prevenir.
+            try:
+                message = await asyncio.wait_for(queue.get(), timeout=25.0)
+            except asyncio.TimeoutError:
+                message = {"type": "ping"}
+            await socket.send_json(message)
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+    finally:
+        watcher.unsubscribe(queue)
+        with contextlib.suppress(RuntimeError):
+            await socket.close()

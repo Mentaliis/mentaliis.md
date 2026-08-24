@@ -5,9 +5,21 @@
  * ne sort de l'ordinateur, l'application fonctionne hors ligne.
  */
 
-import type { Door, Note, NoteSummary, Position, Scene, VaultInfo } from "./types";
+import type {
+  AttachedImage,
+  Constellation,
+  Door,
+  Note,
+  NoteLinks,
+  NoteSummary,
+  Position,
+  Scene,
+  VaultInfo,
+} from "./types";
 
-const BASE = "http://127.0.0.1:8756/api";
+const HOST = "127.0.0.1:8756";
+const BASE = `http://${HOST}/api`;
+export const EVENTS_URL = `ws://${HOST}/api/events`;
 
 class ApiError extends Error {}
 
@@ -49,6 +61,21 @@ export const api = {
     request<Note>(`/note?id=${encodeURIComponent(id)}`, { method: "PUT", ...body({ content }) }),
   createNote: (parent: string, title: string) =>
     request<NoteSummary>("/note", { method: "POST", ...body({ parent, title }) }),
+  setImages: (id: string, images: AttachedImage[]) =>
+    request<NoteSummary>(`/note/images?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      ...body({ images }),
+    }),
+
+  // --- Liens ---
+  links: (id: string) => request<NoteLinks>(`/links?id=${encodeURIComponent(id)}`),
+  resolveLink: (target: string) =>
+    request<{ id: string | null }>(`/links/resolve?target=${encodeURIComponent(target)}`),
+
+  // --- Vue d'ensemble ---
+  constellation: () => request<Constellation>("/constellation"),
+  moveGlobally: (id: string, position: Position) =>
+    request<{ ok: true }>("/move/global", { method: "PUT", ...body({ id, position }) }),
 
   // --- Portes ---
   createDoor: (parent: string, name: string) =>
@@ -72,6 +99,21 @@ export const api = {
 
   /** URL d'un fichier du Vault (image de couverture, image attachee). */
   fileUrl: (path: string) => `${BASE}/file?path=${encodeURIComponent(path)}`,
+
+  /** Range dans le Vault un fichier depose depuis l'exterieur. */
+  async importFile(file: File, folder = "Assets"): Promise<string> {
+    const payload = new FormData();
+    payload.append("file", file);
+    const response = await fetch(`${BASE}/import?folder=${encodeURIComponent(folder)}`, {
+      method: "POST",
+      body: payload, // pas de Content-Type : le navigateur ajoute la frontiere multipart
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null);
+      throw new ApiError(detail?.detail ?? "Ce fichier n'a pas pu etre importe.");
+    }
+    return (await response.json()).path as string;
+  },
 };
 
 export { ApiError };

@@ -21,8 +21,10 @@ from ..config import (
 )
 from ..models import (
     AttachedImage,
+    Constellation,
     Door,
     Note,
+    NoteLinks,
     NoteSummary,
     Position,
     SceneResponse,
@@ -30,6 +32,15 @@ from ..models import (
 )
 from . import markdown as md
 from .layout import Layout
+
+#: Prefixe des positions de la vue constellation. Un element a deux places :
+#: une dans sa scene, une dans la vue d'ensemble — elles n'ont rien a voir.
+GLOBAL = "@constellation/"
+
+#: Dossier ou atterrissent les images deposees dans l'application.
+ASSETS_DIR = "Assets"
+
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"}
 
 
 class VaultError(Exception):
@@ -46,6 +57,40 @@ class Vault:
         self.root = root
         self.layout = Layout(root)
         (root / VAULT_META_DIR).mkdir(exist_ok=True)
+
+        # Import tardif : l'index a besoin du type Vault, defini ici.
+        from ..index import LinkIndex
+
+        self.links = LinkIndex(self)
+
+        #: Ecritures faites par l'application elle-meme, pour que la surveillance
+        #: du disque ne les renvoie pas a l'interface comme des changements externes.
+        self._own_writes: dict[str, float] = {}
+
+    def _touch(self, path: Path) -> None:
+        now = time.time()
+        self._own_writes[str(path.resolve())] = now
+        # Purge les traces trop vieilles pour rester pertinentes.
+        for key, when in list(self._own_writes.items()):
+            if now - when > 5.0:
+                del self._own_writes[key]
+
+    def wrote_recently(self, path: Path, within: float = 2.0) -> bool:
+        """Vrai si l'application vient d'ecrire ici, ou juste en dessous.
+
+        Ecrire un fichier fait aussi remonter un changement sur le dossier qui le
+        contient : sans cela, chaque enregistrement reviendrait a l'interface
+        deguise en modification externe.
+        """
+        target = Path(path).resolve()
+        cutoff = time.time() - within
+        for written, when in self._own_writes.items():
+            if when < cutoff:
+                continue
+            candidate = Path(written)
+            if candidate == target or candidate.parent == target:
+                return True
+        return False
 
     # --- Chemins ---
 
@@ -179,6 +224,8 @@ class Vault:
             raise VaultError("Seuls les fichiers markdown peuvent etre ecrits.")
         _, meta = md.read(file) if file.exists() else ("", {})
         md.write(file, content, meta)
+        self._touch(file)
+        self.links.invalidate()
         return self.read_note(note_id)
 
     def create_note(self, parent: str, title: str) -> NoteSummary:
@@ -188,6 +235,23 @@ class Vault:
         file = folder / f"{_safe_name(title)}.md"
         file = _unique(file)
         md.write(file, f"# {title}\n\n")
+        self._touch(file)
+        self.links.invalidate()
+        return self._note_summary(file, parent=parent)
+
+    def set_images(self, note_id: str, images: list[AttachedImage]) -> NoteSummary:
+        """Remplace les images accrochees autour d'une note."""
+        file = self.resolve(note_id)
+        if not file.is_file():
+            raise VaultError(f"Cette note n'existe pas : {note_id}")
+        for image in images:
+            self.resolve(image.path)  # chaque image doit vivre dans le Vault
+        self.layout.set_field(
+            note_id,
+            "images",
+            [image.model_dump() for image in images] or None,
+        )
+        parent = Path(note_id).parent.as_posix().strip(".")
         return self._note_summary(file, parent=parent)
 
     # --- Portes ---
@@ -198,7 +262,22 @@ class Vault:
             raise VaultError(f"Cette porte n'existe pas : {parent}")
         new = _unique(folder / _safe_name(name))
         new.mkdir(parents=True)
+        self._touch(new)
         return self._door(new, parent=parent)
+
+    # --- Fichiers deposes ---
+
+    def import_file(self, filename: str, data: bytes, folder: str = ASSETS_DIR) -> str:
+        """Range un fichier depose dans le Vault et renvoie son chemin relatif."""
+        suffix = Path(filename).suffix.lower()
+        if suffix not in IMAGE_EXTENSIONS:
+            raise VaultError(f"Ce type de fichier n'est pas accepte : {suffix or 'inconnu'}")
+        destination = self.resolve(folder)
+        destination.mkdir(parents=True, exist_ok=True)
+        target = _unique(destination / (_safe_name(Path(filename).stem) + suffix))
+        target.write_bytes(data)
+        self._touch(target)
+        return self.relative(target)
 
     # --- Operations communes ---
 
@@ -225,6 +304,10 @@ class Vault:
         source.rename(target)
         new_id = self.relative(target)
         self.layout.rename(item_id, new_id)
+        self.layout.rename(GLOBAL + item_id, GLOBAL + new_id)
+        self._touch(source)
+        self._touch(target)
+        self.links.invalidate()
         return new_id
 
     def delete(self, item_id: str) -> None:
@@ -238,6 +321,86 @@ class Vault:
         trash.mkdir(parents=True, exist_ok=True)
         shutil.move(str(target), str(_unique(trash / target.name)))
         self.layout.forget(item_id)
+        self.layout.forget(GLOBAL + item_id)
+        self._touch(target)
+        self.links.invalidate()
+
+    # --- Liens et vue d'ensemble ---
+
+    def note_links(self, note_id: str) -> NoteLinks:
+        self.resolve(note_id)
+        return self.links.links_for(note_id)
+
+    def resolve_link(self, target: str) -> str | None:
+        """Note designee par un [[wikilink]], ou None si elle reste a ecrire."""
+        return self.links.resolve(target)
+
+    def constellation(self) -> Constellation:
+        """Tout le Vault d'un seul coup d'oeil, portes et notes confondues.
+
+        Les positions sont independantes de celles des scenes : ici, chaque porte
+        est un noyau autour duquel gravitent ses notes, pour que la vue reste
+        lisible meme quand le Vault grossit.
+        """
+        doors: list[Door] = []
+        notes: list[NoteSummary] = []
+
+        for folder in self._all_folders():
+            rel = self.relative(folder)
+            parent = Path(rel).parent.as_posix().strip(".")
+            doors.append(self._door(folder, parent=parent))
+
+        for file in self._all_notes():
+            parent = file.parent.resolve().relative_to(self.root).as_posix().strip(".")
+            notes.append(self._note_summary(file, parent="" if parent == "." else parent))
+
+        self._place_globally(doors, notes)
+        return Constellation(doors=doors, notes=notes, edges=self.links.edges())
+
+    def _all_folders(self):
+        for folder in sorted(self.root.rglob("*"), key=lambda p: p.as_posix().lower()):
+            if not folder.is_dir():
+                continue
+            parts = folder.relative_to(self.root).parts
+            if any(part in IGNORED_DIRS or part.startswith(".") for part in parts):
+                continue
+            yield folder
+
+    def _place_globally(self, doors: list[Door], notes: list[NoteSummary]) -> None:
+        """Positionne dans la vue d'ensemble ce qui n'y a jamais ete place."""
+        # Chaque porte recoit un noyau sur une spirale large ; la racine est au centre.
+        centres: dict[str, tuple[float, float]] = {"": (0.0, 0.0)}
+        for rank, door in enumerate(doors, start=1):
+            angle = rank * 2.399963  # angle d'or : repartit sans jamais aligner
+            radius = 340.0 * math.sqrt(rank)
+            centres[door.id] = (math.cos(angle) * radius, math.sin(angle) * radius)
+
+        for door in doors:
+            door.position = self._global_position(door.id, *centres[door.id])
+
+        # Les notes gravitent autour du noyau de leur porte.
+        per_parent: dict[str, int] = {}
+        for note in notes:
+            index = per_parent.get(note.parent, 0)
+            per_parent[note.parent] = index + 1
+            cx, cy = centres.get(note.parent, (0.0, 0.0))
+            angle = index * 2.399963
+            radius = 96.0 + 34.0 * math.sqrt(index)
+            note.position = self._global_position(
+                note.id, cx + math.cos(angle) * radius, cy + math.sin(angle) * radius
+            )
+
+    def _global_position(self, item_id: str, x: float, y: float) -> Position:
+        key = GLOBAL + item_id
+        stored = self.layout.position(key)
+        if stored:
+            return Position(**stored)
+        self.layout.set_position(key, round(x, 1), round(y, 1))
+        return Position(x=round(x, 1), y=round(y, 1))
+
+    def move_globally(self, item_id: str, x: float, y: float) -> None:
+        self.resolve(item_id)
+        self.layout.set_position(GLOBAL + item_id, x, y)
 
     # --- Recherche ---
 

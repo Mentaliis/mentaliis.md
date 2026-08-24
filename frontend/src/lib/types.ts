@@ -49,3 +49,38 @@ export interface VaultInfo {
   name: string;
   opened: boolean;
 }
+
+/** Une note reliee a une autre par un [[wikilink]]. */
+export interface LinkRef {
+  id: string;
+  title: string;
+  label: string;
+}
+
+/** Le voisinage d'une note dans le reseau du Vault. */
+export interface NoteLinks {
+  id: string;
+  outgoing: LinkRef[];
+  backlinks: LinkRef[];
+  /** Liens ecrits vers des notes qui n'existent pas encore. */
+  unresolved: string[];
+}
+
+export interface Edge {
+  source: string;
+  target: string;
+}
+
+/** Tout le Vault d'un seul coup d'oeil. */
+export interface Constellation {
+  doors: Door[];
+  notes: NoteSummary[];
+  edges: Edge[];
+}
+
+/** Message pousse par le moteur quand le Vault change sur le disque. */
+export interface EngineEvent {
+  type: "vault-changed" | "watch-stopped" | "ping";
+  paths?: string[];
+  reason?: string;
+}

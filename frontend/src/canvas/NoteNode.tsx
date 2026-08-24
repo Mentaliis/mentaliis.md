@@ -1,8 +1,10 @@
 /** Une note : un fichier markdown, avec ses images accrochees autour. */
 
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
-import type { NoteSummary, Position } from "../lib/types";
+import type { AttachedImage, NoteSummary, Position } from "../lib/types";
 import { useDraggable } from "./useDraggable";
+import { useImageDrop } from "./useImageDrop";
 
 interface Props {
   note: NoteSummary;
@@ -11,7 +13,18 @@ interface Props {
   onMove: (position: Position) => void;
   onCommit: (position: Position) => void;
   onOpen: () => void;
+  onChanged: () => void;
+  onError: (message: string) => void;
   onContextMenu: (event: React.MouseEvent) => void;
+}
+
+/** Ou se poserait une image lachee, relativement au centre de la note. */
+function dropOffset(event: React.DragEvent, scale: number): Position {
+  const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  return {
+    x: Math.round((event.clientX - (box.left + box.width / 2)) / scale),
+    y: Math.round((event.clientY - (box.top + box.height / 2)) / scale),
+  };
 }
 
 export function NoteNode({
@@ -21,8 +34,18 @@ export function NoteNode({
   onMove,
   onCommit,
   onOpen,
+  onChanged,
+  onError,
   onContextMenu,
 }: Props) {
+  // Les images bougent souvent : on les tient localement pour que le geste
+  // reste fluide, et on ne previent le moteur qu'au relachement.
+  const [images, setImages] = useState<AttachedImage[] | null>(null);
+  const shown = images ?? note.images;
+
+  // Des que le moteur renvoie la note, c'est lui qui fait foi a nouveau.
+  useEffect(() => setImages(null), [note.images]);
+
   const { dragging, handlers } = useDraggable({
     position: note.position,
     scale,
@@ -31,33 +54,62 @@ export function NoteNode({
     onClick: onOpen,
   });
 
+  const persist = useCallback(
+    async (next: AttachedImage[]) => {
+      setImages(next);
+      try {
+        await api.setImages(note.id, next);
+        onChanged();
+      } catch (problem) {
+        setImages(null); // revient a l'etat du moteur
+        onError((problem as Error).message);
+      }
+    },
+    [note.id, onChanged, onError],
+  );
+
+  // Deposer une image sur une note, c'est l'accrocher autour.
+  const drop = useImageDrop({
+    onError,
+    onDropped: async (paths, event) => {
+      const origin = dropOffset(event, scale);
+      await persist([
+        ...shown,
+        ...paths.map((path, index) => ({
+          path,
+          caption: "",
+          // Decale chaque image d'une salve pour qu'aucune n'en cache une autre.
+          position: { x: origin.x + index * 24, y: origin.y + index * 18 },
+        })),
+      ]);
+    },
+  });
+
   return (
     <div
-      className={`node note${dragging ? " is-dragging" : ""}${active ? " is-active" : ""}`}
+      className={`node note${dragging ? " is-dragging" : ""}${active ? " is-active" : ""}${
+        drop.over ? " is-drop-target" : ""
+      }`}
       style={{ transform: `translate(${note.position.x}px, ${note.position.y}px)` }}
       onContextMenu={onContextMenu}
       {...handlers}
+      {...drop.handlers}
     >
-      {/* Images accrochees, chacune reliee a la note par un fil. */}
-      {note.images.map((image, index) => (
-        <div
+      {shown.map((image, index) => (
+        <PinnedImage
           key={`${image.path}-${index}`}
-          className="note__pinned"
-          style={{
-            transform: `translate(${image.position.x}px, ${image.position.y}px)`,
-          }}
-        >
-          <svg className="note__thread" aria-hidden="true">
-            <line
-              x1={-image.position.x}
-              y1={-image.position.y}
-              x2={0}
-              y2={0}
-              stroke="currentColor"
-            />
-          </svg>
-          <img src={api.fileUrl(image.path)} alt={image.caption} draggable={false} />
-        </div>
+          image={image}
+          scale={scale}
+          onMove={(position) =>
+            setImages(shown.map((item, at) => (at === index ? { ...item, position } : item)))
+          }
+          onCommit={(position) =>
+            void persist(
+              shown.map((item, at) => (at === index ? { ...item, position } : item)),
+            )
+          }
+          onDetach={() => void persist(shown.filter((_, at) => at !== index))}
+        />
       ))}
 
       <div className="note__card">
@@ -76,6 +128,49 @@ export function NoteNode({
       <div className="node__label">
         <span className="node__title">{note.title}</span>
       </div>
+    </div>
+  );
+}
+
+/** Une image accrochee a la note, reliee par un fil, deplacable a la main. */
+function PinnedImage({
+  image,
+  scale,
+  onMove,
+  onCommit,
+  onDetach,
+}: {
+  image: AttachedImage;
+  scale: number;
+  onMove: (position: Position) => void;
+  onCommit: (position: Position) => void;
+  onDetach: () => void;
+}) {
+  const { dragging, handlers } = useDraggable({ position: image.position, scale, onMove, onCommit });
+
+  return (
+    <div
+      className={`note__pinned${dragging ? " is-dragging" : ""}`}
+      style={{ transform: `translate(${image.position.x}px, ${image.position.y}px)` }}
+      title={image.caption || image.path}
+      {...handlers}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (window.confirm("Detacher cette image ? Le fichier reste dans le Vault.")) onDetach();
+      }}
+    >
+      {/* Le fil part du centre de la note et rejoint l'image. */}
+      <svg className="note__thread" aria-hidden="true">
+        <line
+          x1={-image.position.x}
+          y1={-image.position.y}
+          x2={0}
+          y2={0}
+          stroke="currentColor"
+        />
+      </svg>
+      <img src={api.fileUrl(image.path)} alt={image.caption} draggable={false} />
     </div>
   );
 }

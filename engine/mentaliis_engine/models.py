@@ -52,6 +52,14 @@ class Note(NoteSummary):
     frontmatter: dict = Field(default_factory=dict)
 
 
+class Camera(BaseModel):
+    """Ou l'on regarde dans une scene, et de quelle distance."""
+
+    x: float
+    y: float
+    scale: float
+
+
 class SceneResponse(BaseModel):
     """Contenu d'une scene : ce que l'on voit en entrant dans une porte."""
 
@@ -59,6 +67,8 @@ class SceneResponse(BaseModel):
     name: str
     doors: list[Door] = Field(default_factory=list)
     notes: list[NoteSummary] = Field(default_factory=list)
+    #: Cadrage retrouve tel qu'on l'avait laisse, ou None a la premiere visite.
+    camera: Camera | None = None
 
 
 class VaultInfo(BaseModel):
@@ -104,6 +114,7 @@ class Constellation(BaseModel):
     doors: list[Door] = Field(default_factory=list)
     notes: list[NoteSummary] = Field(default_factory=list)
     edges: list[Edge] = Field(default_factory=list)
+    camera: Camera | None = None
 
 
 # --- Corps de requetes ---
@@ -148,3 +159,9 @@ class SetImagesRequest(BaseModel):
     """Les images accrochees autour d'une note."""
 
     images: list[AttachedImage] = Field(default_factory=list)
+
+
+class SetCameraRequest(BaseModel):
+    """Cadrage a retenir pour une scene."""
+
+    camera: Camera

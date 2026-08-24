@@ -6,11 +6,11 @@
  * c'est un ciel — on cherche des constellations, pas un sens de lecture.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
-import type { Constellation, Position } from "../lib/types";
+import { CONSTELLATION_VIEW, type Constellation, type Position } from "../lib/types";
 import { useDraggable } from "./useDraggable";
-import { useViewport } from "./useViewport";
+import { useRememberedCamera, useViewport } from "./useViewport";
 
 interface Props {
   data: Constellation;
@@ -31,16 +31,14 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
     setPositions(next);
   }, [data]);
 
-  const { fit } = viewport;
-  useLayoutEffect(() => {
-    const element = surface.current;
-    if (!element) return;
-    fit(
-      [...data.doors, ...data.notes].map((item) => item.position),
-      element.clientWidth,
-      element.clientHeight,
-    );
-  }, [fit, data]);
+  // Le ciel se retrouve tel qu'on l'avait laisse.
+  useRememberedCamera(
+    CONSTELLATION_VIEW,
+    data.camera,
+    viewport,
+    [...data.doors, ...data.notes].map((item) => item.position),
+    surface,
+  );
 
   /** Zoome autour du centre de la vue, pas du coin. */
   const { zoomBy } = viewport;

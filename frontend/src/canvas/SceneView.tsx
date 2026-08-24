@@ -1,13 +1,13 @@
 /** L'environnement : la scene dans laquelle flottent les portes et les notes. */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { Door, NoteSummary, Position, Scene } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
 import { DoorNode } from "./DoorNode";
 import { NoteNode } from "./NoteNode";
-import { useViewport } from "./useViewport";
+import { useRememberedCamera, useViewport } from "./useViewport";
 
 interface Props {
   scene: Scene;
@@ -44,14 +44,14 @@ export function SceneView({
     setNotes(scene.notes);
   }, [scene]);
 
-  // Recadre la camera a chaque changement de scene, pour ne jamais arriver dans le vide.
-  const { fit } = viewport;
-  useLayoutEffect(() => {
-    const element = surface.current;
-    if (!element) return;
-    const points = [...scene.doors, ...scene.notes].map((item) => item.position);
-    fit(points, element.clientWidth, element.clientHeight);
-  }, [fit, scene]);
+  // On retrouve la porte exactement comme on l'avait laissee.
+  useRememberedCamera(
+    scene.path,
+    scene.camera,
+    viewport,
+    [...scene.doors, ...scene.notes].map((item) => item.position),
+    surface,
+  );
 
   const moveLocal = useCallback((id: string, position: Position) => {
     const apply = <T extends { id: string; position: Position }>(items: T[]) =>

@@ -21,6 +21,7 @@ from ..config import (
 )
 from ..models import (
     AttachedImage,
+    Camera,
     Constellation,
     Door,
     Note,
@@ -36,6 +37,12 @@ from .layout import Layout
 #: Prefixe des positions de la vue constellation. Un element a deux places :
 #: une dans sa scene, une dans la vue d'ensemble — elles n'ont rien a voir.
 GLOBAL = "@constellation/"
+
+#: Prefixe du cadrage retenu pour chaque scene.
+CAMERA = "@camera/"
+
+#: Nom sous lequel la vue d'ensemble retient son propre cadrage.
+CONSTELLATION_VIEW = "@constellation"
 
 #: Dossier ou atterrissent les images deposees dans l'application.
 ASSETS_DIR = "Assets"
@@ -144,7 +151,23 @@ class Vault:
             name=self.name if not path else folder.name,
             doors=doors,
             notes=notes,
+            camera=self.camera(path),
         )
+
+    # --- Cadrage ---
+
+    def camera(self, path: str) -> Camera | None:
+        """Ou l'on regardait la derniere fois dans cette scene."""
+        stored = self.layout.get(CAMERA + path)
+        if {"x", "y", "scale"} <= stored.keys():
+            return Camera(x=stored["x"], y=stored["y"], scale=stored["scale"])
+        return None
+
+    def set_camera(self, path: str, camera: Camera) -> None:
+        """Retient le cadrage : rouvrir une porte doit rendre la meme vue."""
+        key = CAMERA + path
+        self.layout.set_position(key, round(camera.x, 2), round(camera.y, 2))
+        self.layout.set_field(key, "scale", round(camera.scale, 4))
 
     def _door(self, folder: Path, parent: str) -> Door:
         rel = self.relative(folder)
@@ -407,7 +430,12 @@ class Vault:
             notes.append(self._note_summary(file, parent="" if parent == "." else parent))
 
         self._place_globally(doors, notes)
-        return Constellation(doors=doors, notes=notes, edges=self.links.edges())
+        return Constellation(
+            doors=doors,
+            notes=notes,
+            edges=self.links.edges(),
+            camera=self.camera(CONSTELLATION_VIEW),
+        )
 
     def _all_folders(self):
         for folder in sorted(self.root.rglob("*"), key=lambda p: p.as_posix().lower()):

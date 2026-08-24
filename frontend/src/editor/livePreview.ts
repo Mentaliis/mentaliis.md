@@ -54,9 +54,22 @@ function near(state: EditorState, from: number, to: number): boolean {
   return state.selection.ranges.some((range) => range.from <= to && range.to >= from);
 }
 
-/** Vrai si le curseur est vraiment a l'interieur : plus exigeant que `near`. */
-function within(state: EditorState, from: number, to: number): boolean {
-  return state.selection.ranges.some((range) => range.from < to && range.to > from);
+/** Vrai si le curseur est pose quelque part sur la ligne de cette portee. */
+function onLine(state: EditorState, from: number, to: number): boolean {
+  const debut = state.doc.lineAt(from).from;
+  const fin = state.doc.lineAt(Math.min(to, state.doc.length)).to;
+  return state.selection.ranges.some((range) => range.from <= fin && range.to >= debut);
+}
+
+/**
+ * Faut-il montrer le markdown brut de ce bloc ?
+ *
+ * Poser le curseur sur la ligne devoile la syntaxe — `# Titre` reapparait, on
+ * corrige, on repart. Mais pendant la frappe elle reste cachee : taper « # »
+ * puis un texte donne un titre tout de suite, sans voir le diese.
+ */
+function revealBlock(state: EditorState, typing: boolean, from: number, to: number): boolean {
+  return !typing && onLine(state, from, to);
 }
 
 // ---------------------------------------------------------------- Blocs
@@ -122,7 +135,7 @@ const EMBED = /!\[\[([^\]\n]+?)\]\]/g;
 const WIKILINK = /(!?)\[\[([^\]\n]+?)\]\]/g;
 const INLINE_MATH = /\$([^$\n]+?)\$/g;
 
-function buildInline(view: EditorView): DecorationSet {
+function buildInline(view: EditorView, typing: boolean): DecorationSet {
   const { state } = view;
   const marks: Range<Decoration>[] = [];
   const consumed: { from: number; to: number }[] = [];
@@ -153,9 +166,9 @@ function buildInline(view: EditorView): DecorationSet {
         if (name === "Table") return near(state, node.from, node.to) ? undefined : false;
 
         if (name === "HorizontalRule") {
-          // Des le troisieme tiret tape, le trait apparait : le curseur est
-          // alors en bout de ligne, donc pas « a l'interieur ».
-          if (within(state, node.from, node.to)) return false;
+          // Des le troisieme tiret tape, le trait apparait ; y reposer le
+          // curseur ramene les « --- » pour pouvoir les effacer.
+          if (revealBlock(state, typing, node.from, node.to)) return false;
           replace(node.from, node.to, Decoration.replace({ widget: new RuleWidget() }));
           return false;
         }
@@ -181,14 +194,9 @@ function buildInline(view: EditorView): DecorationSet {
           }
         }
 
-        if (name === "HeaderMark" && !within(state, node.from, node.to)) {
-          // Le « # » et l'espace qui le suit partent ensemble.
-          const end = state.sliceDoc(node.to, node.to + 1) === " " ? node.to + 1 : node.to;
-          replace(node.from, end, HIDE);
-          return false;
-        }
-
-        if (name === "QuoteMark" && !near(state, node.from, node.to)) {
+        if (name === "HeaderMark" || name === "QuoteMark") {
+          if (revealBlock(state, typing, node.from, node.to)) return false;
+          // Le marqueur et l'espace qui le suit partent ensemble.
           const end = state.sliceDoc(node.to, node.to + 1) === " " ? node.to + 1 : node.to;
           replace(node.from, end, HIDE);
           return false;
@@ -320,14 +328,21 @@ export function livePreview(onFollowLink: (target: string) => void): Extension {
   const plugin = ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
+      /** Vrai tant que la derniere action etait une frappe, pas un deplacement. */
+      private typing = true;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view);
+        this.decorations = buildInline(view, this.typing);
       }
 
       update(update: ViewUpdate) {
+        // Ecrire cache la syntaxe ; deplacer le curseur la devoile. Taper modifie
+        // aussi la selection, d'ou l'ordre : le texte l'emporte.
+        if (update.docChanged) this.typing = true;
+        else if (update.selectionSet) this.typing = false;
+
         if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildInline(update.view);
+          this.decorations = buildInline(update.view, this.typing);
         }
       }
     },

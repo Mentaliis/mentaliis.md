@@ -37,11 +37,20 @@ export interface Note extends NoteSummary {
   frontmatter: Record<string, unknown>;
 }
 
+/** Ou l'on regarde dans une scene, et de quelle distance. */
+export interface Camera {
+  x: number;
+  y: number;
+  scale: number;
+}
+
 export interface Scene {
   path: string;
   name: string;
   doors: Door[];
   notes: NoteSummary[];
+  /** Cadrage retrouve tel qu'on l'avait laisse, ou null a la premiere visite. */
+  camera: Camera | null;
 }
 
 export interface VaultInfo {
@@ -76,7 +85,11 @@ export interface Constellation {
   doors: Door[];
   notes: NoteSummary[];
   edges: Edge[];
+  camera: Camera | null;
 }
+
+/** Nom sous lequel la vue d'ensemble retient son propre cadrage. */
+export const CONSTELLATION_VIEW = "@constellation";
 
 /** Message pousse par le moteur quand le Vault change sur le disque. */
 export interface EngineEvent {

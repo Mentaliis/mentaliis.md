@@ -24,6 +24,7 @@ from ..models import (
     RenameRequest,
     SaveNoteRequest,
     SceneResponse,
+    SetCameraRequest,
     SetCoverRequest,
     SetImagesRequest,
     VaultInfo,
@@ -133,6 +134,16 @@ def get_resolve_link(target: str = Query(..., description="Texte d'un [[wikilink
 @router.get("/constellation", response_model=Constellation)
 def get_constellation():
     return _guard(_vault().constellation)
+
+
+@router.put("/camera")
+def put_camera(
+    payload: SetCameraRequest,
+    path: str = Query("", description="Scene concernee, ou @constellation"),
+) -> dict:
+    """Retient le cadrage d'une scene, pour la retrouver telle qu'on l'a laissee."""
+    _guard(_vault().set_camera, path, payload.camera)
+    return {"ok": True}
 
 
 @router.put("/move/global")

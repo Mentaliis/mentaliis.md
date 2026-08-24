@@ -36,6 +36,28 @@ def test_les_positions_sont_persistees(vault):
     assert vault.scene("").doors[0].position.x == 120
 
 
+def test_les_positions_survivent_a_une_reouverture_du_logiciel(tmp_path, vault):
+    vault.move("Projets", 321.5, -120.5)
+    vault.move("journal.md", -80, 240)
+
+    # Un nouveau Vault sur le meme dossier : c'est ce que fait le logiciel au
+    # demarrage suivant, une fois le moteur redemarre.
+    rouvert = Vault(tmp_path)
+    scene = rouvert.scene("")
+    porte = next(item for item in scene.doors if item.id == "Projets")
+    note = next(item for item in scene.notes if item.id == "journal.md")
+
+    assert (porte.position.x, porte.position.y) == (321.5, -120.5)
+    assert (note.position.x, note.position.y) == (-80, 240)
+
+
+def test_une_position_deja_choisie_nest_jamais_recalculee(tmp_path, vault):
+    vault.move("Projets", 7, 7)
+    for _ in range(3):
+        Vault(tmp_path).scene("")
+    assert Vault(tmp_path).layout.position("Projets") == {"x": 7.0, "y": 7.0}
+
+
 def test_nouveaux_elements_ne_sont_pas_empiles(vault):
     scene = vault.scene("")
     positions = {(item.position.x, item.position.y) for item in [*scene.doors, *scene.notes]}

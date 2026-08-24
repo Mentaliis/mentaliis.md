@@ -7,6 +7,7 @@
 
 import type {
   AttachedImage,
+  Camera,
   Constellation,
   Door,
   Note,
@@ -71,6 +72,13 @@ export const api = {
   links: (id: string) => request<NoteLinks>(`/links?id=${encodeURIComponent(id)}`),
   resolveLink: (target: string) =>
     request<{ id: string | null }>(`/links/resolve?target=${encodeURIComponent(target)}`),
+
+  /** Retient le cadrage d'une scene, pour la retrouver telle qu'on l'a laissee. */
+  saveCamera: (path: string, camera: Camera) =>
+    request<{ ok: true }>(`/camera?path=${encodeURIComponent(path)}`, {
+      method: "PUT",
+      ...body({ camera }),
+    }),
 
   // --- Vue d'ensemble ---
   constellation: () => request<Constellation>("/constellation"),

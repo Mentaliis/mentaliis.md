@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from mentaliis_engine.models import AttachedImage, Position
+from mentaliis_engine.models import AttachedImage, Camera, Position
 from mentaliis_engine.vault import Vault
 
 
@@ -116,6 +116,37 @@ def test_position_globale_independante_de_la_scene(vault):
     assert vault.scene("").doors[0].position.x == 10
     door = next(item for item in vault.constellation().doors if item.id == "Projets")
     assert (door.position.x, door.position.y) == (999, -999)
+
+
+# --- Cadrage ---
+
+
+def test_une_scene_jamais_visitee_na_pas_de_cadrage(vault):
+    assert vault.scene("").camera is None
+
+
+def test_le_cadrage_est_retenu_par_scene(vault):
+    vault.set_camera("", Camera(x=100, y=-50, scale=0.8))
+    vault.set_camera("Projets", Camera(x=-10, y=20, scale=1.6))
+    racine = vault.scene("").camera
+    porte = vault.scene("Projets").camera
+    assert (racine.x, racine.y, racine.scale) == (100, -50, 0.8)
+    assert (porte.x, porte.y, porte.scale) == (-10, 20, 1.6)
+
+
+def test_le_cadrage_survit_a_une_reouverture(tmp_path, vault):
+    vault.set_camera("Projets", Camera(x=42, y=-42, scale=1.25))
+    from mentaliis_engine.vault import Vault as Rouvert
+
+    camera = Rouvert(tmp_path).scene("Projets").camera
+    assert (camera.x, camera.y, camera.scale) == (42, -42, 1.25)
+
+
+def test_la_constellation_a_son_propre_cadrage(vault):
+    vault.set_camera("", Camera(x=1, y=1, scale=1))
+    vault.set_camera("@constellation", Camera(x=900, y=900, scale=0.3))
+    assert vault.constellation().camera.x == 900
+    assert vault.scene("").camera.x == 1
 
 
 # --- Images ---

@@ -7,13 +7,11 @@
  * flou des qu'on zoome.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { api } from "../lib/api";
+import type { Camera } from "../lib/types";
 
-export interface Camera {
-  x: number;
-  y: number;
-  scale: number;
-}
+export type { Camera };
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 4;
@@ -118,6 +116,9 @@ export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
     setPanning(false);
   }, []);
 
+  /** Repose la camera exactement ou elle etait. */
+  const apply = useCallback((next: Camera) => setCamera(next), []);
+
   /** Recadre la camera pour que tous les elements tiennent a l'ecran. */
   const fit = useCallback((points: { x: number; y: number }[], width: number, height: number) => {
     if (!points.length) {
@@ -168,9 +169,61 @@ export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
     onPointerDown,
     onPointerMove,
     onPointerUp,
+    apply,
     fit,
     zoomBy,
   };
+}
+
+/**
+ * Retrouve le cadrage laisse la derniere fois, et retient celui qu'on adopte.
+ *
+ * Sans cela, entrer dans une porte recadre tout automatiquement : les elements
+ * n'ont pas bouge, mais ils apparaissent ailleurs a l'ecran — on croit avoir
+ * perdu leur position.
+ */
+export function useRememberedCamera(
+  scenePath: string,
+  saved: Camera | null | undefined,
+  viewport: ReturnType<typeof useViewport>,
+  /** Ce que la scene contient, pour un premier cadrage quand rien n'est retenu. */
+  points: { x: number; y: number }[],
+  surface: React.RefObject<HTMLDivElement | null>,
+) {
+  const { apply, fit, camera } = viewport;
+  //: Cadrage venu du moteur : il ne doit pas etre renvoye tel quel.
+  const applied = useRef("");
+
+  useLayoutEffect(() => {
+    const element = surface.current;
+    if (!element) return;
+    if (saved) {
+      applied.current = signature(saved);
+      apply(saved);
+    } else {
+      // Premiere visite : on cadre sur ce qui existe, et ce cadrage sera retenu.
+      applied.current = "";
+      fit(points, element.clientWidth, element.clientHeight);
+    }
+    // Volontairement lie a la scene, pas aux points : bouger un element ne doit
+    // pas rebrasser la camera.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apply, fit, scenePath, saved, surface]);
+
+  // Enregistre le cadrage un peu apres le dernier geste, pas a chaque image.
+  useEffect(() => {
+    const current = signature(camera);
+    if (current === applied.current) return;
+    const timer = window.setTimeout(() => {
+      applied.current = current;
+      void api.saveCamera(scenePath, camera).catch(() => undefined);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [camera, scenePath]);
+}
+
+function signature(camera: Camera) {
+  return `${Math.round(camera.x)}|${Math.round(camera.y)}|${camera.scale.toFixed(3)}`;
 }
 
 function clamp(value: number, min: number, max: number) {

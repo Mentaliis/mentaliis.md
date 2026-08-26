@@ -35,9 +35,11 @@ interface Props {
   reloadToken?: number;
   onSaved: () => void;
   onOpenNote: (id: string) => void;
+  /** Previent que la note a change d'identite, pour que son onglet suive. */
+  onRenamed: (oldId: string, next: { id: string; title: string }) => void;
 }
 
-export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) {
+export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote, onRenamed }: Props) {
   const [note, setNote] = useState<Note | null>(null);
   /** Titre lu dans le texte en cours : il change des qu'on modifie le premier titre. */
   const [liveTitle, setLiveTitle] = useState<string | null>(null);
@@ -119,8 +121,8 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
   // reference plutot que dans les dependances evite de reconstruire l'editeur pour
   // rien : le reconstruire ramenait le curseur au debut du texte a chaque
   // enregistrement automatique.
-  const latest = useRef({ onSaved, refreshLinks, followLink });
-  latest.current = { onSaved, refreshLinks, followLink };
+  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed });
+  latest.current = { onSaved, refreshLinks, followLink, onRenamed };
 
   useEffect(() => {
     if (!loaded || !host.current) return;
@@ -171,8 +173,14 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
     }
 
     // On revient ou l'on etait : bascule ecriture/lecture ou relecture du disque
-    // ne doivent pas faire perdre sa place dans le texte.
-    const anchor = Math.min(caret.current, content.current.length);
+    // ne doivent pas faire perdre sa place dans le texte. Mais jamais sur la
+    // premiere ligne quand elle porte le titre : elle y est repliee.
+    const premiere = content.current.split("\n", 1)[0];
+    const plancher = /^#\s/.test(premiere) ? premiere.length + 1 : 0;
+    const anchor = Math.min(
+      Math.max(caret.current, plancher),
+      content.current.length,
+    );
 
     const editor = new EditorView({
       state: EditorState.create({ doc: content.current, extensions, selection: { anchor } }),
@@ -186,6 +194,31 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
       view.current = null;
     };
   }, [loaded, noteId, readOnly, reloadToken]);
+
+  /**
+   * Renomme la note.
+   *
+   * Passer par un geste explicite plutot que par un champ toujours modifiable :
+   * un titre ne doit pas changer parce qu'on a clique au mauvais endroit.
+   */
+  const rename = useCallback(async () => {
+    if (!note) return;
+    const voulu = await dialog.prompt({
+      title: "Renommer la note",
+      value: note.title,
+      confirmLabel: "Renommer",
+    });
+    if (!voulu || voulu === note.title) return;
+    try {
+      // Le titre vit a trois endroits : le frontmatter, le `# titre` en tete, et
+      // le nom du fichier. Le moteur les met d'accord d'un seul geste.
+      const renommee = await api.retitle(note.id, voulu);
+      latest.current.onRenamed(note.id, { id: renommee.id, title: renommee.title });
+      latest.current.onSaved();
+    } catch (problem) {
+      setError((problem as Error).message);
+    }
+  }, [dialog, note, onOpenNote]);
 
   // Ctrl+E bascule entre ecrire et lire, sans quitter la note.
   useEffect(() => {
@@ -289,9 +322,19 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote }: Props) 
   return (
     <section className="editor">
       <header className="editor__head">
+        {/* Le titre ne s'affiche qu'une fois, et ne se modifie pas par megarde :
+            il faut passer par le crayon qui apparait au survol. */}
         <div className="editor__identity">
-          <h2>{liveTitle || note.title}</h2>
-          <span className="editor__path">{note.id}</span>
+          <h1 className="editor__title">{liveTitle || note.title}</h1>
+          <button
+            type="button"
+            className="editor__rename"
+            title="Renommer la note"
+            aria-label="Renommer la note"
+            onClick={() => void rename()}
+          >
+            ✎
+          </button>
         </div>
 
         <div className="editor__actions">

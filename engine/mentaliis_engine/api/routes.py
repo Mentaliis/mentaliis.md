@@ -18,12 +18,14 @@ from ..models import (
     CreateNoteRequest,
     Door,
     LinkRequest,
+    MediaLibrary,
     MoveRequest,
     Note,
     NoteLinks,
     NoteSummary,
     OpenVaultRequest,
     RenameRequest,
+    RetitleRequest,
     SaveNoteRequest,
     SceneLink,
     SceneResponse,
@@ -31,6 +33,7 @@ from ..models import (
     SetCoverRequest,
     SetIconRequest,
     SetImagesRequest,
+    SetMediaFolderRequest,
     Settings,
     VaultInfo,
 )
@@ -127,6 +130,12 @@ def post_note(payload: CreateNoteRequest):
     return _guard(_vault().create_note, payload.parent, payload.title)
 
 
+@router.put("/note/title", response_model=Note)
+def put_note_title(payload: RetitleRequest, id: str = Query(...)):
+    """Change le titre d'une note : son texte et son nom de fichier ensemble."""
+    return _guard(_vault().retitle, id, payload.title)
+
+
 @router.put("/note/images", response_model=NoteSummary)
 def put_note_images(payload: SetImagesRequest, id: str = Query(...)):
     return _guard(_vault().set_images, id, payload.images)
@@ -169,6 +178,21 @@ def put_move_global(payload: MoveRequest) -> dict:
     """Position dans la vue d'ensemble, distincte de celle dans la scene."""
     _guard(_vault().move_globally, payload.id, payload.position.x, payload.position.y)
     return {"ok": True}
+
+
+# --- Dossier des medias ---
+
+
+@router.get("/media", response_model=MediaLibrary)
+def get_media():
+    """Le dossier des medias, ses images, et les dossiers ou en choisir un."""
+    return _guard(_vault().media)
+
+
+@router.put("/media", response_model=MediaLibrary)
+def put_media(payload: SetMediaFolderRequest):
+    _guard(_vault().set_media_folder, payload.folder)
+    return _guard(_vault().media)
 
 
 # --- Traits entre elements ---

@@ -158,6 +158,7 @@ function buildInline(
   typing: boolean,
   reveal: boolean,
   blockField: BlockField,
+  hideLeadingTitle = false,
 ): DecorationSet {
   const { state } = view;
   const marks: Range<Decoration>[] = [];
@@ -208,6 +209,18 @@ function buildInline(
           return false;
         }
 
+        // Le titre en tete de note fait doublon avec celui de l'en-tete, qui
+        // l'affiche deja en grand. On replie donc la ligne — un plugin n'ayant
+        // pas le droit aux decorations de bloc, c'est la ligne elle-meme qu'on
+        // masque. Y poser le curseur la ramene, sans attendre la fin de la frappe :
+        // sinon on ecrirait a l'aveugle sur une ligne repliee.
+        if (name === "ATXHeading1" && hideLeadingTitle && node.from === 0) {
+          if (!(reveal && onLine(state, node.from, node.to))) {
+            marks.push(Decoration.line({ class: "cm-lead-title" }).range(0));
+            return false;
+          }
+        }
+
         const lineClass = LINE_CLASS[name];
         if (lineClass) {
           const first = state.doc.lineAt(node.from).number;
@@ -233,8 +246,11 @@ function buildInline(
             Decoration.replace({ widget: new CheckboxWidget(checked, node.from) }),
           );
           // La case tient lieu de puce : la ligne ne doit pas en porter deux.
+          // Une tache faite s'efface visuellement, pour ne plus retenir l'oeil.
           marks.push(
-            Decoration.line({ class: "cm-task-line" }).range(state.doc.lineAt(node.from).from),
+            Decoration.line({
+              class: `cm-task-line${checked ? " is-done" : ""}`,
+            }).range(state.doc.lineAt(node.from).from),
           );
           return false;
         }
@@ -354,6 +370,12 @@ export function livePreview(
   onFollowLink: (target: string) => void,
   /** Faux en lecture : le texte est alors purement consultatif, sans syntaxe. */
   reveal = true,
+  /**
+   * Masque le `# Titre` place en tete du texte : l'en-tete de la note l'affiche
+   * deja, et le repeter deux fois n'apprend rien. Poser le curseur dessus le
+   * ramene, pour pouvoir le corriger a la main si besoin.
+   */
+  hideLeadingTitle = true,
 ): Extension {
   const blockField = makeBlockField(reveal);
 
@@ -364,7 +386,7 @@ export function livePreview(
       private typing = true;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view, this.typing, reveal, blockField);
+        this.decorations = buildInline(view, this.typing, reveal, blockField, hideLeadingTitle);
       }
 
       update(update: ViewUpdate) {
@@ -374,7 +396,13 @@ export function livePreview(
         else if (update.selectionSet) this.typing = false;
 
         if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildInline(update.view, this.typing, reveal, blockField);
+          this.decorations = buildInline(
+            update.view,
+            this.typing,
+            reveal,
+            blockField,
+            hideLeadingTitle,
+          );
         }
       }
     },

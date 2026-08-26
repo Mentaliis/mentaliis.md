@@ -279,20 +279,47 @@ body:has(.rail__grip.is-dragging) * {
 }
 
 .editor__identity {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
   min-width: 0;
 }
 
-.editor__identity h2 {
+/* Le titre de la note, affiche une seule fois, a la taille d'un grand titre.
+   Il est fige : on ne le modifie que par le crayon, jamais par megarde. */
+.editor__title {
   overflow: hidden;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: calc(30px * var(--editor-scale, 1));
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.editor__path {
-  font-size: 11px;
+.editor__rename {
+  flex-shrink: 0;
+  padding: 4px 7px;
+  font-size: 14px;
+  line-height: 1;
   color: var(--text-faint);
+  border: 1px solid transparent;
+  border-radius: 1px;
+  opacity: 0;
+  transition:
+    opacity var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.editor__identity:hover .editor__rename,
+.editor__rename:focus-visible {
+  opacity: 1;
+}
+
+.editor__rename:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .editor__actions {
@@ -664,6 +691,13 @@ body:has(.rail__grip.is-dragging) * {
   padding: 1px 0;
 }
 
+/* Le titre en tete de note : replie, puisque l'en-tete l'affiche deja. */
+/* Plus specifique que `.cm-line` : CodeMirror injecte ses propres styles apres
+   cette feuille, et gagnerait a specificite egale. */
+.cm-editor .cm-line.cm-lead-title {
+  display: none;
+}
+
 /* --- Titres --- */
 
 .cm-h1,
@@ -812,15 +846,33 @@ body:has(.rail__grip.is-dragging) * {
   border-color: var(--accent);
 }
 
+/* La coche est centree dans le carre, et prend la couleur du fond de la page :
+   elle se lit comme un creux dans la pastille, pas comme un symbole pose dessus. */
 .cm-task.is-checked::after {
   position: absolute;
-  top: 0;
-  left: 3.5px;
+  inset: 0;
+  display: grid;
+  place-content: center;
   content: "✓";
   font-size: 11px;
   font-weight: 700;
-  line-height: 13px;
-  color: #fff;
+  line-height: 1;
+  color: var(--bg);
+}
+
+/* Une tache faite s'efface : on voit d'un coup d'oeil ce qui reste. */
+.cm-task-line.is-done {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+  text-decoration-thickness: 1px;
+  opacity: 0.65;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.cm-task-line.is-done .cm-task {
+  text-decoration: none;
+  opacity: 1;
 }
 
 /* --- Trait de separation --- */
@@ -1226,6 +1278,174 @@ body:has(.rail__grip.is-dragging) * {
 .settings__action:hover {
   color: var(--text);
   border-color: var(--accent);
+}
+
+/* --------------------------------------------- Choix d'une image */
+
+.media__veil {
+  position: fixed;
+  inset: 0;
+  z-index: 360;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6vh 20px;
+  background: rgba(4, 8, 16, 0.66);
+  backdrop-filter: blur(5px);
+  animation: fade var(--fast) var(--ease);
+}
+
+.media {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 94vw);
+  max-height: 86vh;
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+  box-shadow: 0 36px 90px -34px rgba(0, 0, 0, 0.95);
+  animation: dialog-in var(--slow) var(--ease);
+}
+
+.media__head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.media__head h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.media__hint {
+  margin-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.media__close {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-faint);
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.media__close:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.media__body {
+  flex: 1;
+  min-height: 120px;
+  padding: 18px 22px;
+  overflow-y: auto;
+}
+
+.media__empty,
+.media__error {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
+.media__error {
+  color: var(--danger);
+}
+
+.media__folders {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+}
+
+.media__folders button {
+  width: 100%;
+  padding: 9px 12px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.media__folders button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.media__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.media__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.media__item:hover {
+  border-color: var(--accent);
+}
+
+.media__item.is-current {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.media__item img {
+  width: 100%;
+  height: 88px;
+  object-fit: cover;
+  background: var(--bg);
+  border-radius: 1px;
+}
+
+.media__item span {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media__foot {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+  padding: 12px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.media__link {
+  font-size: 12.5px;
+  color: var(--text-faint);
+  transition: color var(--fast) var(--ease);
+}
+
+.media__link:hover {
+  color: var(--accent);
+}
+
+.media__link.is-danger:hover {
+  color: var(--danger);
 }
 
 /* ---------------------------------------------------------- Toast */

@@ -4,14 +4,20 @@ import { useCallback, useState } from "react";
 import { api } from "../lib/api";
 
 interface Options {
-  /** Recoit les chemins des images une fois rangees dans le Vault. */
-  onDropped: (paths: string[], event: React.DragEvent) => void | Promise<void>;
+  /** Recoit les chemins des images, une fois rangees dans le Vault. */
+  onDropped?: (paths: string[], event: React.DragEvent) => void | Promise<void>;
+  /**
+   * Recoit les fichiers tels quels, sans les ranger. A utiliser quand la
+   * destination depend du contexte — l'image de vision doit aller dans le
+   * dossier des medias, pas dans le fourre-tout.
+   */
+  onFiles?: (files: File[], event: React.DragEvent) => void | Promise<void>;
   onError?: (message: string) => void;
   /** Un seul fichier suffit (image de vision d'une porte, par exemple). */
   single?: boolean;
 }
 
-export function useImageDrop({ onDropped, onError, single = false }: Options) {
+export function useImageDrop({ onDropped, onFiles, onError, single = false }: Options) {
   const [over, setOver] = useState(false);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -44,16 +50,19 @@ export function useImageDrop({ onDropped, onError, single = false }: Options) {
         return;
       }
 
+      const retenus = single ? files.slice(0, 1) : files;
       try {
-        const paths = await Promise.all(
-          (single ? files.slice(0, 1) : files).map((file) => api.importFile(file)),
-        );
-        await onDropped(paths, event);
+        if (onFiles) {
+          await onFiles(retenus, event);
+          return;
+        }
+        const paths = await Promise.all(retenus.map((file) => api.importFile(file)));
+        await onDropped?.(paths, event);
       } catch (problem) {
         onError?.((problem as Error).message);
       }
     },
-    [onDropped, onError, single],
+    [onDropped, onFiles, onError, single],
   );
 
   return { over, handlers: { onDragOver, onDragLeave, onDrop } };

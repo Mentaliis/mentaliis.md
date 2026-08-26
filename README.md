@@ -122,7 +122,10 @@ Ce qui fonctionne :
   Le nom du lieu ou l'on se trouve est rappele en capitales, tout en haut, au centre.
 - **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
 - **Traits** : relier deux elements d'une scene en tirant depuis leur poignee,
-  les detacher d'un clic sur la croix. Enregistres tout seuls dans le Vault.
+  les detacher d'un clic sur la croix. Autant de traits que voulu sur un meme
+  element. Enregistres tout seuls dans le Vault.
+- **Dossier des medias** : un dossier du Vault, choisi une fois, d'ou viennent
+  toutes les images de vision. Il accueillera aussi sons et videos.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
 - **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.
   Taper `# ` donne un titre aussitot, `---` un trait, `- [ ]` une case a cocher
@@ -130,6 +133,9 @@ Ce qui fonctionne :
   Le fichier sur le disque, lui, reste du markdown parfaitement ordinaire.
 - **Deux modes** : *ecriture* (par defaut) et *lecture*, qui verrouille le texte
   et n'affiche plus aucune syntaxe — la note y est purement consultative.
+- **Titre d'une note** : affiche une seule fois, en grand, et fige. Il ne change
+  que par le crayon qui apparait au survol — jamais par megarde. Le renommer met
+  d'accord le frontmatter, le `# titre` du texte et le nom du fichier.
 - **Parametres** : taille de l'ecriture (1×, 2×, 3×), qui n'agit que sur la zone
   d'edition, et largeur de la bande de gauche, reglable aussi en tirant son bord.
 - **Blocs** : titres, listes, cases a cocher, tableaux, citations, code,

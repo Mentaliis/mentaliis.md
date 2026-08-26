@@ -11,6 +11,7 @@ import type {
   Constellation,
   Door,
   DoorIcon,
+  MediaLibrary,
   Note,
   NoteLinks,
   NoteSummary,
@@ -70,6 +71,12 @@ export const api = {
     request<Note>(`/note?id=${encodeURIComponent(id)}`, { method: "PUT", ...body({ content }) }),
   createNote: (parent: string, title: string) =>
     request<NoteSummary>("/note", { method: "POST", ...body({ parent, title }) }),
+  /** Change le titre d'une note : son texte et son nom de fichier ensemble. */
+  retitle: (id: string, title: string) =>
+    request<Note>(`/note/title?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      ...body({ title }),
+    }),
   setImages: (id: string, images: AttachedImage[]) =>
     request<NoteSummary>(`/note/images?id=${encodeURIComponent(id)}`, {
       method: "PUT",
@@ -92,6 +99,11 @@ export const api = {
   constellation: () => request<Constellation>("/constellation"),
   moveGlobally: (id: string, position: Position) =>
     request<{ ok: true }>("/move/global", { method: "PUT", ...body({ id, position }) }),
+
+  // --- Dossier des medias ---
+  media: () => request<MediaLibrary>("/media"),
+  setMediaFolder: (folder: string) =>
+    request<MediaLibrary>("/media", { method: "PUT", ...body({ folder }) }),
 
   // --- Traits entre elements ---
   link: (source: string, target: string) =>

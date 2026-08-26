@@ -37,12 +37,20 @@ export function DoorNode({
     onClick: onEnter,
   });
 
-  // Deposer une image sur une porte, c'est lui donner sa vision.
+  // Deposer une image sur une porte, c'est lui donner sa vision. Elle est rangee
+  // dans le dossier des medias, puisque c'est de la que doit venir toute vision.
   const drop = useImageDrop({
     single: true,
     onError,
-    onDropped: async ([path]) => {
-      await api.setCover(door.id, path);
+    onFiles: async ([file]) => {
+      const { folder } = await api.media();
+      if (!folder) {
+        onError(
+          "Choisissez d'abord le dossier des medias : clic droit sur la porte, « Choisir une image de vision ».",
+        );
+        return;
+      }
+      await api.setCover(door.id, await api.importFile(file, folder));
       onChanged();
     },
   });

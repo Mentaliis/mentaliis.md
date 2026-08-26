@@ -103,6 +103,15 @@ export interface Constellation {
 /** Nom sous lequel la vue d'ensemble retient son propre cadrage. */
 export const CONSTELLATION_VIEW = "@constellation";
 
+/** Le dossier du Vault qui contient les medias, et ce qu'il contient. */
+export interface MediaLibrary {
+  /** Chemin relatif du dossier choisi, ou null tant qu'aucun ne l'est. */
+  folder: string | null;
+  images: string[];
+  /** Tous les dossiers du Vault, pour en choisir un quand rien n'est configure. */
+  folders: string[];
+}
+
 /** Preferences de l'utilisateur, communes a tous ses Vaults. */
 export interface Settings {
   /** Agrandissement de toute l'interface : 1, 2 ou 3 fois. */

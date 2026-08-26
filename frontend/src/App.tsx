@@ -114,6 +114,12 @@ export default function App() {
     setActive(id);
   }, []);
 
+  /** Une note renommee garde sa place : son onglet change d'identite, sans doubler. */
+  const replaceNote = useCallback((oldId: string, next: OpenNote) => {
+    setTabs((current) => current.map((tab) => (tab.id === oldId ? next : tab)));
+    setActive((current) => (current === oldId ? next.id : current));
+  }, []);
+
   const closeNote = useCallback((id: string) => {
     setTabs((current) => {
       const next = current.filter((tab) => tab.id !== id);
@@ -358,6 +364,7 @@ export default function App() {
               reloadToken={noteReload}
               onSaved={refresh}
               onOpenNote={openNote}
+              onRenamed={replaceNote}
             />
           </>
         ) : view === "constellation" ? (

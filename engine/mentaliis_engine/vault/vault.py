@@ -24,6 +24,7 @@ from ..models import (
     Camera,
     Constellation,
     Door,
+    MediaLibrary,
     Note,
     NoteLinks,
     NoteSummary,
@@ -45,8 +46,12 @@ CAMERA = "@camera/"
 #: Nom sous lequel la vue d'ensemble retient son propre cadrage.
 CONSTELLATION_VIEW = "@constellation"
 
-#: Dossier ou atterrissent les images deposees dans l'application.
+#: Dossier ou atterrissent les images deposees, tant qu'aucun dossier de medias
+#: n'a ete designe.
 ASSETS_DIR = "Assets"
+
+#: Cle sous laquelle le Vault retient ses reglages propres.
+CONFIG = "@config"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"}
 
@@ -163,6 +168,44 @@ class Vault:
             for source, target in self.layout.links()
             if source in present and target in present
         ]
+
+    # --- Dossier des medias ---
+
+    def media_folder(self) -> str | None:
+        """Le dossier designe comme responsable des medias, s'il existe encore."""
+        stored = self.layout.get(CONFIG).get("media")
+        if not isinstance(stored, str):
+            return None
+        try:
+            return stored if self.resolve(stored).is_dir() else None
+        except VaultError:
+            return None
+
+    def set_media_folder(self, folder: str) -> str:
+        """Designe un dossier existant. On n'en cree jamais : il vient de l'utilisateur."""
+        cleaned = (folder or "").strip().strip("/")
+        if not cleaned:
+            raise VaultError("Aucun dossier indique.")
+        target = self.resolve(cleaned)
+        if not target.is_dir():
+            raise VaultError(f"Ce dossier n'existe pas dans le Vault : {cleaned}")
+        if target == self.root:
+            raise VaultError("Le Vault entier ne peut pas servir de dossier de medias.")
+        self.layout.set_field(CONFIG, "media", cleaned)
+        return cleaned
+
+    def media(self) -> MediaLibrary:
+        """Ce que l'interface doit savoir pour proposer une image de vision."""
+        folder = self.media_folder()
+        images: list[str] = []
+        if folder:
+            prefix = folder + "/"
+            images = [path for path in self.list_assets() if path.startswith(prefix)]
+        return MediaLibrary(
+            folder=folder,
+            images=images,
+            folders=[self.relative(item) for item in self._all_folders()],
+        )
 
     # --- Traits entre elements ---
 
@@ -300,6 +343,31 @@ class Vault:
         self.links.invalidate()
         return self._note_summary(file, parent=parent)
 
+    def retitle(self, note_id: str, title: str) -> Note:
+        """Change le titre d'une note, partout ou il est ecrit.
+
+        Le titre affiche vient du frontmatter, sinon du premier `# titre`, sinon
+        du nom de fichier. Renommer le seul fichier ne changerait donc souvent
+        rien a l'ecran : on met les trois d'accord d'un coup.
+        """
+        title = (title or "").strip()
+        if not title:
+            raise VaultError("Un titre ne peut pas etre vide.")
+        file = self.resolve(note_id)
+        if not file.is_file():
+            raise VaultError(f"Cette note n'existe pas : {note_id}")
+
+        content, meta = md.read(file)
+        if isinstance(meta.get("title"), str):
+            meta["title"] = title
+        else:
+            content = md.with_title(content, title)
+        md.write(file, content, meta)
+        self._touch(file)
+
+        new_id = self.rename(note_id, title)
+        return self.read_note(new_id)
+
     def set_images(self, note_id: str, images: list[AttachedImage]) -> NoteSummary:
         """Remplace les images accrochees autour d'une note."""
         file = self.resolve(note_id)
@@ -396,6 +464,11 @@ class Vault:
             raise VaultError(f"Cette porte n'existe pas : {door_id}")
         if cover:
             self.resolve(cover)  # la couverture doit vivre dans le Vault
+            media = self.media_folder()
+            if media and not cover.startswith(media + "/"):
+                raise VaultError(
+                    f"Une image de vision doit venir du dossier des medias ({media})."
+                )
         self.layout.set_field(door_id, "cover", cover)
         parent = Path(door_id).parent.as_posix().strip(".")
         return self._door(folder, parent=parent)

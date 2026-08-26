@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import type { Door, NoteSummary, Position, Scene, SceneLink } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
+import { MediaPicker } from "../components/MediaPicker";
 import { DoorNode } from "./DoorNode";
 import { NoteNode } from "./NoteNode";
 import { type Anchor, SceneLinks } from "./SceneLinks";
@@ -36,6 +37,8 @@ export function SceneView({
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
   const [menu, setMenu] = useState<Menu | null>(null);
+  /** Porte dont on choisit l'image de vision. */
+  const [visionFor, setVisionFor] = useState<Door | null>(null);
   const [links, setLinks] = useState<SceneLink[]>(scene.links);
   /** Trait en cours de trace, tant qu'on n'a pas relache. */
   const [pending, setPending] = useState<{ from: string; to: Position } | null>(null);
@@ -233,16 +236,11 @@ export function SceneView({
             },
           ]
         : []),
-      // L'image de vision se pose en la lachant sur la porte : ne reste ici
-      // que le moyen de la retirer.
-      ...(door?.cover
+      ...(door
         ? [
             {
-              label: "Retirer l'image de vision",
-              action: async () => {
-                await api.setCover(id, null);
-                onSceneChanged();
-              },
+              label: door.cover ? "Changer l'image de vision" : "Choisir une image de vision",
+              action: () => setVisionFor(door),
             },
           ]
         : []),
@@ -396,6 +394,24 @@ export function SceneView({
           ⤢
         </button>
       </div>
+
+      {visionFor && (
+        <MediaPicker
+          doorName={visionFor.name}
+          current={visionFor.cover}
+          onClose={() => setVisionFor(null)}
+          onPick={async (path) => {
+            const porte = visionFor;
+            setVisionFor(null);
+            try {
+              await api.setCover(porte.id, path);
+              onSceneChanged();
+            } catch (problem) {
+              onError((problem as Error).message);
+            }
+          }}
+        />
+      )}
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />

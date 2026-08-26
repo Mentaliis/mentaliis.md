@@ -49,6 +49,15 @@ def title_of(path: Path, content: str, metadata: dict[str, Any]) -> str:
     return path.stem
 
 
+def with_title(content: str, title: str) -> str:
+    """Reecrit le premier titre du texte, ou en pose un si le texte n'en a pas."""
+    heading = HEADING_RE.search(content)
+    if heading:
+        return content[: heading.start()] + f"# {title}" + content[heading.end() :]
+    pose = f"# {title}\n\n"
+    return pose + content.lstrip() if content.strip() else pose
+
+
 def excerpt_of(content: str, limit: int = 160) -> str:
     """Quelques mots de la note, pour l'apercu sur la carte."""
     lines: list[str] = []

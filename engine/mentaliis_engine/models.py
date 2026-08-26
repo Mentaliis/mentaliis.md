@@ -166,6 +166,12 @@ class RenameRequest(BaseModel):
     name: str
 
 
+class RetitleRequest(BaseModel):
+    """Nouveau titre d'une note."""
+
+    title: str
+
+
 class LinkRequest(BaseModel):
     """Les deux bouts d'un trait a attacher ou detacher."""
 
@@ -195,6 +201,23 @@ class SetCameraRequest(BaseModel):
     """Cadrage a retenir pour une scene."""
 
     camera: Camera
+
+
+class MediaLibrary(BaseModel):
+    """Le dossier du Vault qui contient les medias, et ce qu'il contient."""
+
+    #: Chemin relatif du dossier choisi, ou None tant qu'aucun ne l'est.
+    folder: str | None = None
+    #: Images qu'il contient, chemins relatifs au Vault.
+    images: list[str] = Field(default_factory=list)
+    #: Tous les dossiers du Vault, pour en choisir un quand rien n'est configure.
+    folders: list[str] = Field(default_factory=list)
+
+
+class SetMediaFolderRequest(BaseModel):
+    """Dossier a designer comme responsable des medias."""
+
+    folder: str
 
 
 class Settings(BaseModel):

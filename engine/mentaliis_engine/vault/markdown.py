@@ -58,12 +58,43 @@ def with_title(content: str, title: str) -> str:
     return pose + content.lstrip() if content.strip() else pose
 
 
+#: De quoi retirer d'un extrait tout ce qui n'est que de la syntaxe.
+_SANS_SYNTAXE: tuple[tuple[re.Pattern[str], str], ...] = (
+    # Images et liens : on ne garde que ce qui se lit.
+    (re.compile(r"!\[\[([^\]|]*)(?:\|[^\]]*)?\]\]"), ""),
+    (re.compile(r"\[\[(?:[^\]|]*\|)?([^\]]*)\]\]"), r"\1"),
+    (re.compile(r"!\[[^\]]*\]\([^)]*\)"), ""),
+    (re.compile(r"\[([^\]]*)\]\([^)]*\)"), r"\1"),
+    # Marqueurs de style.
+    (re.compile(r"(\*\*|__|~~|`)"), ""),
+    (re.compile(r"(?<![\w*])\*(?![\s*])"), ""),
+    (re.compile(r"(?<![\s*])\*(?![\w*])"), ""),
+    # Debuts de ligne : puces, cases, citations, numeros.
+    (re.compile(r"^\s*(?:[-*+]|\d+\.)\s+\[[ xX]\]\s*"), ""),
+    (re.compile(r"^\s*(?:[-*+]|\d+\.)\s+"), ""),
+    (re.compile(r"^\s*>+\s*"), ""),
+)
+
+
 def excerpt_of(content: str, limit: int = 160) -> str:
-    """Quelques mots de la note, pour l'apercu sur la carte."""
+    """Quelques mots de la note, pour l'apercu sur la carte.
+
+    L'extrait est nettoye de sa syntaxe : une carte doit montrer du texte, pas
+    des etoiles et des crochets, comme partout ailleurs dans l'application.
+    """
     lines: list[str] = []
     for line in content.splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or stripped.startswith("---"):
+            continue
+        # Un tableau ou une formule en bloc n'ont rien a dire en une ligne.
+        if stripped.startswith("|") or stripped.startswith("$$") or stripped.startswith("```"):
+            continue
+        for motif, remplacement in _SANS_SYNTAXE:
+            stripped = motif.sub(remplacement, stripped)
+        # Ce qui a ete retire laisse des blancs derriere lui.
+        stripped = re.sub(r"\s{2,}", " ", stripped).strip()
+        if not stripped:
             continue
         lines.append(stripped)
         if sum(len(item) for item in lines) >= limit:

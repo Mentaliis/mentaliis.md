@@ -9,6 +9,8 @@
   --bg: #0b1220;
   --bg-raised: #0f1a2e;
   --bg-glass: rgba(16, 26, 46, 0.86);
+  /* Le fond des notes, un ton a part du reste de l'environnement. */
+  --bg-note: #081426;
 
   /* Texte */
   --text: #e6ecf7;
@@ -882,11 +884,13 @@ code {
   position: absolute;
   top: 0;
   left: 50%;
+  /* Seule la largeur est imposee : la hauteur suit l'image, qui garde donc ses
+     proportions d'origine. Le centrage passe par `translate` plutot que par une
+     marge, puisqu'on ne connait plus la hauteur a l'avance. */
   width: var(--pinned, 96px);
-  height: var(--pinned, 96px);
-  margin: calc(var(--pinned, 96px) / -2) 0 0 calc(var(--pinned, 96px) / -2);
   color: var(--line-strong);
   cursor: grab;
+  translate: -50% -50%;
   transition: transform var(--fast) var(--ease);
 }
 
@@ -906,9 +910,9 @@ code {
 
 .note__pinned img {
   position: relative;
+  display: block;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: auto;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
   border-radius: 1px;

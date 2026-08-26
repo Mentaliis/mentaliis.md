@@ -286,7 +286,7 @@ body:has(.rail__grip.is-dragging) * {
   flex: 1;
   flex-direction: column;
   min-width: 0;
-  background: var(--bg);
+  background: var(--bg-note);
   animation: fade var(--slow) var(--ease);
 }
 

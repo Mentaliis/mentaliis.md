@@ -376,3 +376,45 @@ def test_la_taille_par_defaut_est_la_plus_petite(vault):
     vault.set_images("Projets/idee.md", [AttachedImage(path=".MEDIAS/cap.png")])
     note = next(n for n in vault.scene("Projets").notes if n.id == "Projets/idee.md")
     assert note.images[0].size == 1
+
+
+# --- L'extrait d'une carte ne montre aucune syntaxe ---
+
+
+def extrait(vault, contenu):
+    from mentaliis_engine.vault import markdown as md
+
+    return md.excerpt_of(contenu)
+
+
+def test_lextrait_retire_les_marqueurs_de_style(vault):
+    assert extrait(vault, "Du **gras**, de l'*italique* et du `code`.") == (
+        "Du gras, de l'italique et du code."
+    )
+
+
+def test_lextrait_retire_les_puces_et_les_cases(vault):
+    assert extrait(vault, "- [ ] Une tache\n- Une puce") == "Une tache Une puce"
+
+
+def test_lextrait_garde_le_texte_des_liens(vault):
+    assert extrait(vault, "Voir [[Cap 2030]] et [le site](https://exemple.fr).") == (
+        "Voir Cap 2030 et le site."
+    )
+
+
+def test_lextrait_retire_les_images(vault):
+    assert extrait(vault, "Avant ![[schema.png]] apres") == "Avant apres"
+
+
+def test_lextrait_ignore_tableaux_et_formules(vault):
+    contenu = "| a | b |\n| --- | --- |\n| 1 | 2 |\n\nDu texte."
+    assert extrait(vault, contenu) == "Du texte."
+
+
+def test_lextrait_retire_les_chevrons_de_citation(vault):
+    assert extrait(vault, "> Une citation.") == "Une citation."
+
+
+def test_une_multiplication_nest_pas_prise_pour_de_l_italique(vault):
+    assert extrait(vault, "3 * 4 = 12") == "3 * 4 = 12"

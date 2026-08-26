@@ -16,6 +16,7 @@ import type {
   NoteSummary,
   Position,
   Scene,
+  SceneLink,
   Settings,
   VaultInfo,
 } from "./types";
@@ -91,6 +92,15 @@ export const api = {
   constellation: () => request<Constellation>("/constellation"),
   moveGlobally: (id: string, position: Position) =>
     request<{ ok: true }>("/move/global", { method: "PUT", ...body({ id, position }) }),
+
+  // --- Traits entre elements ---
+  link: (source: string, target: string) =>
+    request<SceneLink>("/link", { method: "POST", ...body({ source, target }) }),
+  unlink: (source: string, target: string) =>
+    request<{ ok: true }>(
+      `/link?source=${encodeURIComponent(source)}&target=${encodeURIComponent(target)}`,
+      { method: "DELETE" },
+    ),
 
   // --- Portes ---
   createDoor: (parent: string, name: string) =>

@@ -121,6 +121,8 @@ Ce qui fonctionne :
   avec son image de vision au-dessus.
   Le nom du lieu ou l'on se trouve est rappele en capitales, tout en haut, au centre.
 - **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
+- **Traits** : relier deux elements d'une scene en tirant depuis leur poignee,
+  les detacher d'un clic sur la croix. Enregistres tout seuls dans le Vault.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
 - **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.
   Taper `# ` donne un titre aussitot, `---` un trait, `- [ ]` une case a cocher

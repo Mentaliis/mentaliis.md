@@ -83,7 +83,13 @@ export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
   const onPointerDown = useCallback(
     (event: React.PointerEvent) => {
       // Le fond deplace la camera ; le bouton du milieu aussi, ou qu'on soit.
-      const onBackground = event.target === event.currentTarget;
+      // Les traits se survolent grace a une bande invisible plus large qu'eux :
+      // elle doit laisser passer le geste, sinon le fond se bloque le long de
+      // chaque trait. Seule la croix de detachement garde le pointeur.
+      const target = event.target as HTMLElement;
+      const onBackground =
+        target === event.currentTarget ||
+        (Boolean(target.closest?.(".links-layer")) && !target.closest?.(".link__detach"));
       if (event.button === 1) event.preventDefault();
       else if (!onBackground || event.button !== 0) return;
 
@@ -198,7 +204,12 @@ export function useRememberedCamera(
     const element = surface.current;
     if (!element) return;
     if (saved) {
-      applied.current = signature(saved);
+      // On compare les valeurs, pas les objets : la scene se recharge souvent, et
+      // chaque rechargement rapporte un cadrage neuf mais identique. Le reappliquer
+      // annulerait un deplacement en cours, pas encore enregistre.
+      const signe = signature(saved);
+      if (signe === applied.current) return;
+      applied.current = signe;
       apply(saved);
     } else {
       // Premiere visite : on cadre sur ce qui existe, et ce cadrage sera retenu.

@@ -1,12 +1,13 @@
 /** L'environnement : la scene dans laquelle flottent les portes et les notes. */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
-import type { Door, NoteSummary, Position, Scene } from "../lib/types";
+import type { Door, NoteSummary, Position, Scene, SceneLink } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
 import { DoorNode } from "./DoorNode";
 import { NoteNode } from "./NoteNode";
+import { type Anchor, SceneLinks } from "./SceneLinks";
 import { useRememberedCamera, useViewport } from "./useViewport";
 
 interface Props {
@@ -35,14 +36,117 @@ export function SceneView({
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [links, setLinks] = useState<SceneLink[]>(scene.links);
+  /** Trait en cours de trace, tant qu'on n'a pas relache. */
+  const [pending, setPending] = useState<{ from: string; to: Position } | null>(null);
+  /** Hauteur mesuree de chaque element : c'est elle qui place l'accroche des traits. */
+  const [heights, setHeights] = useState<Map<string, number>>(new Map());
   const dialog = useDialog();
   const viewport = useViewport();
   const surface = useRef<HTMLDivElement>(null);
+  const world = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDoors(scene.doors);
     setNotes(scene.notes);
+    setLinks(scene.links);
   }, [scene]);
+
+  // Les elements n'ont pas tous la meme hauteur — un cerveau fait le double
+  // d'une porte — donc on la mesure plutot que de la deviner.
+  useLayoutEffect(() => {
+    const found = new Map<string, number>();
+    world.current?.querySelectorAll<HTMLElement>("[data-node-id]").forEach((element) => {
+      const id = element.dataset.nodeId;
+      if (id) found.set(id, element.offsetHeight);
+    });
+    setHeights((current) => {
+      const identique =
+        current.size === found.size && [...found].every(([id, h]) => current.get(id) === h);
+      return identique ? current : found;
+    });
+  }, [doors, notes]);
+
+  /** Un trait s'accroche au centre de l'element. */
+  const anchors = new Map<string, Anchor>();
+  for (const item of [...doors, ...notes]) {
+    anchors.set(item.id, {
+      x: item.position.x,
+      y: item.position.y - 1 + (heights.get(item.id) ?? 130) / 2,
+    });
+  }
+
+  /** Ou se trouve un point de l'ecran dans le monde de la scene. */
+  const toWorld = useCallback(
+    (clientX: number, clientY: number): Position => {
+      const rect = surface.current?.getBoundingClientRect();
+      const { x, y, scale } = viewport.camera;
+      return {
+        x: (clientX - (rect?.left ?? 0) - x) / scale,
+        y: (clientY - (rect?.top ?? 0) - y) / scale,
+      };
+    },
+    [viewport.camera],
+  );
+
+  const startLink = useCallback(
+    (id: string, event: React.PointerEvent) => {
+      // Sans cela, le geste deplacerait l'element au lieu de tirer un trait.
+      event.stopPropagation();
+      event.preventDefault();
+      setPending({ from: id, to: toWorld(event.clientX, event.clientY) });
+    },
+    [toWorld],
+  );
+
+  // Le trait suit la souris, et s'attache a ce qu'on lache dessous.
+  useEffect(() => {
+    if (!pending) return;
+
+    const suivre = (event: PointerEvent) =>
+      setPending((current) =>
+        current ? { ...current, to: toWorld(event.clientX, event.clientY) } : null,
+      );
+
+    const lacher = async (event: PointerEvent) => {
+      setPending(null);
+      const sous = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>("[data-node-id]");
+      const cible = sous?.dataset.nodeId;
+      if (!cible || cible === pending.from) return;
+      try {
+        const cree = await api.link(pending.from, cible);
+        setLinks((current) =>
+          current.some((l) => l.source === cree.source && l.target === cree.target)
+            ? current
+            : [...current, cree],
+        );
+      } catch (problem) {
+        onError((problem as Error).message);
+      }
+    };
+
+    window.addEventListener("pointermove", suivre);
+    window.addEventListener("pointerup", lacher, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", suivre);
+      window.removeEventListener("pointerup", lacher);
+    };
+  }, [onError, pending, toWorld]);
+
+  const detach = useCallback(
+    (link: SceneLink) => {
+      setLinks((current) =>
+        current.filter((l) => !(l.source === link.source && l.target === link.target)),
+      );
+      void api.unlink(link.source, link.target).catch((problem) => {
+        onError((problem as Error).message);
+        onSceneChanged();
+      });
+    },
+    [onError, onSceneChanged],
+  );
 
   // On retrouve la porte exactement comme on l'avait laissee.
   useRememberedCamera(
@@ -218,7 +322,15 @@ export function SceneView({
           if (event.target === event.currentTarget) openMenu(event, backgroundMenu());
         }}
       >
-        <div className="scene__world" style={viewport.worldStyle}>
+        <div ref={world} className="scene__world" style={viewport.worldStyle}>
+          <SceneLinks
+            links={links}
+            anchors={anchors}
+            pending={pending}
+            scale={viewport.camera.scale}
+            onDetach={detach}
+          />
+
           {doors.map((door) => (
             <DoorNode
               key={door.id}
@@ -229,6 +341,7 @@ export function SceneView({
               onEnter={() => onEnterDoor(door.id)}
               onChanged={onSceneChanged}
               onError={onError}
+              onStartLink={(event) => startLink(door.id, event)}
               onContextMenu={(event) =>
                 openMenu(event, itemMenu(door.id, door.name, door))
               }
@@ -246,6 +359,7 @@ export function SceneView({
               onOpen={() => onOpenNote(note.id)}
               onChanged={onSceneChanged}
               onError={onError}
+              onStartLink={(event) => startLink(note.id, event)}
               onContextMenu={(event) => openMenu(event, itemMenu(note.id, note.title, null))}
             />
           ))}

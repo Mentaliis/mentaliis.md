@@ -28,6 +28,7 @@ from ..models import (
     NoteLinks,
     NoteSummary,
     Position,
+    SceneLink,
     SceneResponse,
     VaultInfo,
 )
@@ -151,8 +152,34 @@ class Vault:
             name=self.name if not path else folder.name,
             doors=doors,
             notes=notes,
+            links=self._links_within({item.id for item in [*doors, *notes]}),
             camera=self.camera(path),
         )
+
+    def _links_within(self, present: set[str]) -> list[SceneLink]:
+        """Ne renvoie que les traits dont les deux bouts sont dans cette scene."""
+        return [
+            SceneLink(source=source, target=target)
+            for source, target in self.layout.links()
+            if source in present and target in present
+        ]
+
+    # --- Traits entre elements ---
+
+    def link(self, source: str, target: str) -> SceneLink:
+        """Attache deux elements par un trait."""
+        if source == target:
+            raise VaultError("Un element ne peut pas etre relie a lui-meme.")
+        for item_id in (source, target):
+            if not self.resolve(item_id).exists():
+                raise VaultError(f"Introuvable : {item_id}")
+        if Path(source).parent != Path(target).parent:
+            raise VaultError("Un trait ne relie que deux elements d'une meme scene.")
+        self.layout.link(source, target)
+        return SceneLink(source=source, target=target)
+
+    def unlink(self, source: str, target: str) -> None:
+        self.layout.unlink(source, target)
 
     # --- Cadrage ---
 
@@ -227,7 +254,9 @@ class Vault:
             return
 
         start = sum(1 for item in placed if self.layout.position(item.id) is not None)
-        radius_step = 210.0
+        # Large : un cerveau fait 300 px de cote, deux voisins ne doivent pas
+        # se recouvrir a la premiere ouverture d'une porte.
+        radius_step = 330.0
         for offset, item in enumerate(unplaced):
             index = start + offset
             # spirale : chaque anneau contient un peu plus d'elements que le precedent

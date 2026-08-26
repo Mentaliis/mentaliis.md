@@ -17,6 +17,7 @@ from ..models import (
     CreateDoorRequest,
     CreateNoteRequest,
     Door,
+    LinkRequest,
     MoveRequest,
     Note,
     NoteLinks,
@@ -24,6 +25,7 @@ from ..models import (
     OpenVaultRequest,
     RenameRequest,
     SaveNoteRequest,
+    SceneLink,
     SceneResponse,
     SetCameraRequest,
     SetCoverRequest,
@@ -166,6 +168,22 @@ def put_camera(
 def put_move_global(payload: MoveRequest) -> dict:
     """Position dans la vue d'ensemble, distincte de celle dans la scene."""
     _guard(_vault().move_globally, payload.id, payload.position.x, payload.position.y)
+    return {"ok": True}
+
+
+# --- Traits entre elements ---
+
+
+@router.post("/link", response_model=SceneLink)
+def post_link(payload: LinkRequest):
+    """Attache deux elements d'une meme scene."""
+    return _guard(_vault().link, payload.source, payload.target)
+
+
+@router.delete("/link")
+def delete_link(source: str = Query(...), target: str = Query(...)) -> dict:
+    """Detache un trait. Detacher ce qui ne l'est pas ne fait rien."""
+    _guard(_vault().unlink, source, target)
     return {"ok": True}
 
 

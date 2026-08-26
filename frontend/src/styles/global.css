@@ -603,46 +603,134 @@ code {
   opacity: 1;
 }
 
+/* --------------------------------------- Traits entre elements */
+
+/* Le calque des traits passe sous les elements, et ne bloque jamais le
+   deplacement du fond : seuls le trait lui-meme et sa croix se laissent viser. */
+.links-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.link__hit {
+  stroke: transparent;
+  pointer-events: stroke;
+}
+
+.link__line {
+  stroke: rgba(140, 170, 220, 0.35);
+  stroke-width: 2;
+  transition: stroke var(--fast) var(--ease), stroke-width var(--fast) var(--ease);
+}
+
+.link.is-hovered .link__line {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+
+.link__detach {
+  cursor: pointer;
+  pointer-events: auto;
+  animation: fade var(--fast) var(--ease);
+}
+
+.link__detach circle {
+  fill: var(--bg-raised);
+  stroke: var(--danger);
+  stroke-width: 1.5;
+}
+
+.link__detach path {
+  stroke: var(--danger);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.link__detach:hover circle {
+  fill: var(--danger);
+}
+
+.link__detach:hover path {
+  stroke: #fff;
+}
+
+/* Le trait que l'on tire : en pointilles tant qu'il n'est accroche a rien. */
+.link__pending {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 5;
+}
+
+/* La poignee d'ou part un trait, discrete jusqu'au survol de l'element. */
+.node__plug {
+  position: absolute;
+  top: 50%;
+  right: -7px;
+  z-index: 6;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  cursor: crosshair;
+  background: var(--bg-raised);
+  border: 2px solid var(--accent);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+
+.node:hover .node__plug {
+  opacity: 1;
+}
+
+.node__plug:hover {
+  background: var(--accent);
+  transform: scale(1.25);
+}
+
 /* ------------------------------------------------------- Un cerveau */
 
-/* Meme encombrement que la porte : les deux apparences doivent peser pareil
-   dans la scene. Le cerveau etant plus large que haut, il occupe toute la
-   largeur et se centre dans la hauteur. */
+/* Deux fois plus grand qu'une porte, volontairement : le cerveau represente
+   ce qui fait fonctionner le reste, il doit dominer la scene. */
+.door--cerveau {
+  width: 300px;
+  margin-left: -150px;
+}
+
 .brain {
   display: block;
-  width: 124px;
-  height: 132px;
+  width: 290px;
+  height: 264px;
   margin: 0 auto;
   overflow: visible;
   transition: transform var(--slow) var(--ease), filter var(--slow) var(--ease);
 }
 
+.brain__ink {
+  stroke: #e04a63;
+}
+
+.brain__stries {
+  opacity: 0.7;
+}
+
+.brain__reflets {
+  stroke: #ffd6db;
+  opacity: 0.55;
+}
+
 .door:hover .brain {
-  transform: translateY(-2px) scale(1.04);
-  filter: drop-shadow(0 10px 26px rgba(244, 146, 187, 0.35));
-}
-
-.brain__folds {
-  stroke: #8c3961;
-  stroke-opacity: 0.8;
-}
-
-.brain__grooves {
-  stroke: #6e2848;
-  stroke-opacity: 0.7;
-}
-
-.brain__mass {
-  transition: filter var(--slow) var(--ease);
-}
-
-.door:hover .brain__mass {
-  filter: brightness(1.08);
+  transform: translateY(-3px) scale(1.03);
+  filter: drop-shadow(0 14px 34px rgba(251, 139, 153, 0.4));
 }
 
 /* Une porte devenue cerveau n'a plus de cadre a mettre en valeur. */
 .node.is-drop-target .brain {
-  filter: drop-shadow(0 0 18px var(--accent));
+  filter: drop-shadow(0 0 22px var(--accent));
 }
 
 /* ---------------------------------------------------------- Une note */

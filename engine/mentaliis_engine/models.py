@@ -68,6 +68,13 @@ class Camera(BaseModel):
     scale: float
 
 
+class SceneLink(BaseModel):
+    """Un trait tire a la main entre deux elements d'une scene."""
+
+    source: str
+    target: str
+
+
 class SceneResponse(BaseModel):
     """Contenu d'une scene : ce que l'on voit en entrant dans une porte."""
 
@@ -75,6 +82,8 @@ class SceneResponse(BaseModel):
     name: str
     doors: list[Door] = Field(default_factory=list)
     notes: list[NoteSummary] = Field(default_factory=list)
+    #: Liens tires a la main entre les elements presents dans cette scene.
+    links: list[SceneLink] = Field(default_factory=list)
     #: Cadrage retrouve tel qu'on l'avait laisse, ou None a la premiere visite.
     camera: Camera | None = None
 
@@ -155,6 +164,13 @@ class MoveRequest(BaseModel):
 
 class RenameRequest(BaseModel):
     name: str
+
+
+class LinkRequest(BaseModel):
+    """Les deux bouts d'un trait a attacher ou detacher."""
+
+    source: str
+    target: str
 
 
 class SetIconRequest(BaseModel):

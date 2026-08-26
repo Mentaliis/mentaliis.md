@@ -14,6 +14,7 @@ interface Props {
   onEnter: () => void;
   onChanged: () => void;
   onError: (message: string) => void;
+  onStartLink: (event: React.PointerEvent) => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
@@ -25,6 +26,7 @@ export function DoorNode({
   onEnter,
   onChanged,
   onError,
+  onStartLink,
   onContextMenu,
 }: Props) {
   const { dragging, handlers } = useDraggable({
@@ -47,6 +49,7 @@ export function DoorNode({
 
   return (
     <div
+      data-node-id={door.id}
       className={`node door door--${door.icon}${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
       style={{ transform: `translate(${door.position.x}px, ${door.position.y}px)` }}
       onContextMenu={onContextMenu}
@@ -54,6 +57,14 @@ export function DoorNode({
       {...handlers}
       {...drop.handlers}
     >
+
+      {/* La poignee d'ou part un trait vers un autre element. */}
+      <span
+        className="node__plug"
+        title="Tirer vers un autre element pour les relier"
+        onPointerDown={onStartLink}
+      />
+
       <div className="door__vision">
         {door.cover ? (
           <img src={api.fileUrl(door.cover)} alt="" draggable={false} />

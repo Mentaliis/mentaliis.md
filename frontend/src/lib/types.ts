@@ -49,11 +49,18 @@ export interface Camera {
   scale: number;
 }
 
+/** Un trait tire a la main entre deux elements d'une scene. */
+export interface SceneLink {
+  source: string;
+  target: string;
+}
+
 export interface Scene {
   path: string;
   name: string;
   doors: Door[];
   notes: NoteSummary[];
+  links: SceneLink[];
   /** Cadrage retrouve tel qu'on l'avait laisse, ou null a la premiere visite. */
   camera: Camera | null;
 }

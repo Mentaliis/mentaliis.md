@@ -16,6 +16,7 @@ interface Props {
   onOpen: () => void;
   onChanged: () => void;
   onError: (message: string) => void;
+  onStartLink: (event: React.PointerEvent) => void;
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
@@ -37,6 +38,7 @@ export function NoteNode({
   onOpen,
   onChanged,
   onError,
+  onStartLink,
   onContextMenu,
 }: Props) {
   // Les images bougent souvent : on les tient localement pour que le geste
@@ -88,6 +90,7 @@ export function NoteNode({
 
   return (
     <div
+      data-node-id={note.id}
       className={`node note${dragging ? " is-dragging" : ""}${active ? " is-active" : ""}${
         drop.over ? " is-drop-target" : ""
       }`}
@@ -96,6 +99,14 @@ export function NoteNode({
       {...handlers}
       {...drop.handlers}
     >
+
+      {/* La poignee d'ou part un trait vers un autre element. */}
+      <span
+        className="node__plug"
+        title="Tirer vers un autre element pour les relier"
+        onPointerDown={onStartLink}
+      />
+
       {shown.map((image, index) => (
         <PinnedImage
           key={`${image.path}-${index}`}

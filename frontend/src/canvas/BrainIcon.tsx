@@ -1,9 +1,11 @@
 /**
  * Le cerveau : l'autre apparence possible d'un dossier, au choix avec la porte.
  *
+ * Il est deux fois plus grand qu'une porte, volontairement : c'est le symbole de
+ * ce qui fait fonctionner le reste, il doit dominer la scene.
+ *
  * Dessine a la main plutot qu'importe comme image : il reste net a n'importe
- * quel zoom, suit le theme et se colore au survol. Les roses vont du plus clair
- * en haut a gauche, ou tombe la lumiere, au plus sombre vers l'arriere.
+ * quel zoom, suit le theme et se colore au survol.
  */
 
 interface Props {
@@ -12,75 +14,94 @@ interface Props {
 }
 
 export function BrainIcon({ id }: Props) {
-  const masse = `masse-${id}`;
-  const cervelet = `cervelet-${id}`;
-  const tronc = `tronc-${id}`;
+  const chair = `chair-${id}`;
+  const clair = `clair-${id}`;
 
   return (
-    <svg className="brain" viewBox="0 0 128 118" role="img" aria-label="Cerveau">
+    <svg className="brain" viewBox="0 0 200 182" role="img" aria-label="Cerveau">
       <defs>
-        <radialGradient id={masse} cx="38%" cy="26%" r="82%">
-          <stop offset="0%" stopColor="#ffd9e8" />
-          <stop offset="38%" stopColor="#f79ec2" />
-          <stop offset="78%" stopColor="#d9739f" />
-          <stop offset="100%" stopColor="#a84973" />
-        </radialGradient>
-        <radialGradient id={cervelet} cx="40%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#e08cae" />
-          <stop offset="100%" stopColor="#943d64" />
-        </radialGradient>
-        <linearGradient id={tronc} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#b05c85" />
-          <stop offset="100%" stopColor="#6e2848" />
+        <linearGradient id={chair} x1="0.15" y1="0" x2="0.85" y2="1">
+          <stop offset="0%" stopColor="#ffb8c1" />
+          <stop offset="50%" stopColor="#fb8b99" />
+          <stop offset="100%" stopColor="#f26576" />
+        </linearGradient>
+        <linearGradient id={clair} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffd2d8" />
+          <stop offset="100%" stopColor="#ffb0bb" />
         </linearGradient>
       </defs>
 
-      {/* Tronc et cervelet passent dessous : la masse les recouvre en partie,
-          ce qui les rattache au lieu de les laisser flotter. */}
-      <path fill={`url(#${tronc})`} d="M63 80 C67 92, 66 102, 62 108 C73 106, 80 96, 82 82 Z" />
-      <path
-        fill={`url(#${cervelet})`}
-        d="M76 76 C95 71, 113 80, 111 95 C109 109, 87 112, 79 101 C73 93, 71 81, 76 76 Z"
-      />
-
-      {/* La masse : front a gauche, occiput a droite, lobe temporal en dessous. */}
-      <path
-        className="brain__mass"
-        fill={`url(#${masse})`}
-        d="M14 56
-           C11 39, 24 24, 40 25
-           C46 12, 67 7, 79 18
-           C95 9, 113 18, 114 35
-           C127 43, 125 63, 110 69
-           C112 81, 102 89, 90 87
-           C84 93, 74 93, 68 89
-           C60 95, 47 97, 39 90
-           C27 91, 17 82, 19 70
-           C14 67, 12 61, 14 56 Z"
-      />
-
-      {/* Les circonvolutions : de longs sillons qui suivent la courbure. */}
       <g
-        className="brain__folds"
-        fill="none"
-        strokeWidth="3.4"
+        className="brain__ink"
+        strokeWidth="3.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M34 35 C48 31, 56 41, 50 53 C46 61, 52 69, 62 69" />
-        <path d="M63 21 C61 33, 69 39, 63 49 C57 57, 63 65, 73 65" />
-        <path d="M89 19 C87 31, 95 37, 89 47 C83 55, 89 63, 99 63" />
-        <path d="M108 35 C102 43, 106 53, 100 59" />
-        <path d="M22 51 C30 49, 36 55, 34 63 C32 71, 38 77, 46 77" />
-        <path d="M24 71 C30 73, 34 79, 32 85" />
-        <path d="M50 79 C58 77, 64 81, 64 87" />
-      </g>
+        {/* Tronc cerebral : un moignon court et epais. */}
+        <path fill="#f26576" d="M104 126 C107 144, 107 158, 105 170 C125 170, 135 150, 137 126 Z" />
 
-      {/* Les plis du cervelet, plus serres : c'est sa signature. */}
-      <g className="brain__grooves" fill="none" strokeWidth="2.4" strokeLinecap="round">
-        <path d="M83 82 C91 79, 101 81, 106 86" />
-        <path d="M82 91 C90 88, 100 90, 106 94" />
-        <path d="M84 100 C91 97, 99 99, 104 102" />
+        {/* Cervelet, glisse sous l'occiput, avec ses stries serrees. */}
+        <path
+          fill="#fb8b99"
+          d="M126 114 C150 104, 177 115, 177 137 C177 158, 149 166, 134 150 C123 137, 119 120, 126 114 Z"
+        />
+        <g className="brain__stries" strokeWidth="1.7" fill="none">
+          <path d="M130 122 C146 114, 164 117, 174 128" />
+          <path d="M128 131 C145 123, 165 127, 176 138" />
+          <path d="M130 141 C147 133, 166 137, 175 147" />
+          <path d="M136 151 C150 143, 165 146, 171 153" />
+        </g>
+
+        {/* La masse : un contour bosselé, comme des lobes accoles. */}
+        <path
+          className="brain__mass"
+          fill={`url(#${chair})`}
+          d="M24 92
+             C16 74, 16 55, 31 44
+             C35 29, 51 23, 63 28
+             C69 13, 89 7, 103 16
+             C117 5, 139 9, 147 24
+             C165 20, 183 34, 182 53
+             C195 63, 194 85, 180 95
+             C182 109, 172 121, 158 120
+             C152 133, 138 139, 126 134
+             C112 147, 84 151, 62 141
+             C40 132, 26 112, 24 92 Z"
+        />
+
+        {/* Le lobe temporal : un vrai lobe pose sous la scissure de Sylvius. */}
+        <path
+          fill="#f57787"
+          d="M29 97
+             C44 122, 77 138, 109 136
+             C127 135, 139 128, 146 116
+             C144 132, 130 145, 110 150
+             C81 156, 49 143, 33 121
+             C27 112, 26 101, 29 97 Z"
+        />
+        <path fill="none" strokeWidth="2.2" opacity="0.8" d="M45 122 C66 135, 94 141, 118 136" />
+
+        {/* Circonvolutions : de longs sillons qui serpentent d'un bord a l'autre. */}
+        <g fill="none">
+          <path d="M40 52 C55 43, 67 52, 62 67 C58 79, 67 89, 79 86" />
+          <path d="M75 31 C70 47, 83 53, 78 67 C74 80, 84 90, 97 85" />
+          <path d="M109 23 C104 40, 117 46, 112 61 C108 75, 119 85, 133 80" />
+          <path d="M143 29 C138 46, 151 52, 146 67 C142 80, 152 90, 165 84" />
+          <path d="M173 47 C182 58, 179 75, 168 81" />
+          <path d="M27 73 C40 66, 51 75, 48 89" />
+          <path d="M57 96 C69 92, 78 100, 76 110" />
+          <path d="M96 96 C108 92, 117 100, 115 111" />
+        </g>
+
+        {/* Reflets : la lumiere tombe en haut a gauche. */}
+        <g stroke="none" fill={`url(#${clair})`} opacity="0.5">
+          <path d="M40 46 C52 32, 74 24, 94 27 C74 33, 56 43, 45 56 Z" />
+          <path d="M120 18 C142 15, 162 26, 170 42 C157 30, 139 23, 120 23 Z" />
+        </g>
+        <g className="brain__reflets" strokeWidth="2.4" fill="none">
+          <path d="M46 41 C60 32, 76 28, 92 30" />
+          <path d="M124 17 C142 16, 157 24, 166 37" />
+        </g>
       </g>
     </svg>
   );

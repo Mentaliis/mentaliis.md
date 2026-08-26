@@ -23,7 +23,7 @@ interface Props {
   scene: Scene;
   activeNoteId: string | null;
   onEnterDoor: (path: string) => void;
-  onOpenNote: (id: string) => void;
+  onOpenNote: (id: string, title?: string) => void;
   onSceneChanged: () => void;
   /** Un element renomme : les onglets ouverts dessus doivent suivre. */
   onRenamed: (oldId: string, newId: string, title?: string) => void;
@@ -335,7 +335,7 @@ export function SceneView({
           if (title) {
             const note = await api.createNote(scene.path, title);
             onSceneChanged();
-            onOpenNote(note.id);
+            onOpenNote(note.id, note.title);
           }
         },
       },
@@ -427,7 +427,7 @@ export function SceneView({
               active={note.id === activeNoteId}
               onMove={(position) => moveLocal(note.id, position)}
               onCommit={(position) => commit(note.id, position)}
-              onOpen={() => onOpenNote(note.id)}
+              onOpen={() => onOpenNote(note.id, note.title)}
               onChanged={onSceneChanged}
               onError={onError}
               onStartLink={(event) => startLink(note.id, event)}

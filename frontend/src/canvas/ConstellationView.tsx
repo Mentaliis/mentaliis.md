@@ -16,7 +16,7 @@ interface Props {
   data: Constellation;
   activeNoteId: string | null;
   onEnterDoor: (path: string) => void;
-  onOpenNote: (id: string) => void;
+  onOpenNote: (id: string, title?: string) => void;
 }
 
 export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote }: Props) {
@@ -157,7 +157,7 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
               onHover={setHovered}
               onMove={moveLocal}
               onCommit={commit}
-              onActivate={() => onOpenNote(note.id)}
+              onActivate={() => onOpenNote(note.id, note.title)}
             />
           ))}
         </div>

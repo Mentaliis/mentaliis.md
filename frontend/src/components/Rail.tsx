@@ -18,7 +18,7 @@ interface Props {
   width: number;
   onEnterDoor: (path: string) => void;
   onGoUp: () => void;
-  onOpenNote: (id: string) => void;
+  onOpenNote: (id: string, title?: string) => void;
   onCreateNote: () => void | Promise<void>;
   /** Pendant le geste : la largeur suit la souris. */
   onResize: (width: number) => void;
@@ -133,7 +133,7 @@ export function Rail({
                 <button
                   type="button"
                   className={`rail__note${note.id === activeNoteId ? " is-active" : ""}`}
-                  onClick={() => onOpenNote(note.id)}
+                  onClick={() => onOpenNote(note.id, note.title)}
                 >
                   {note.title}
                 </button>

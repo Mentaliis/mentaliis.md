@@ -14,6 +14,9 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        // Mentaliis va chercher ses propres mises a jour et se relance seul.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             // Le moteur demarre avec l'application ; l'interface attend qu'il reponde.
             let handle = engine::start(app.handle())?;

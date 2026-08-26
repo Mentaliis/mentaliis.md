@@ -25,3 +25,10 @@ Thumbs.db
 # Les vaults de test ne sont pas versionnes
 vaults/
 .mentaliis-dev/
+
+# --- Empaquetage ---
+# Sorties de PyInstaller
+engine/build/
+engine/dist/
+# La cle privee de signature ne doit JAMAIS etre versionnee.
+*.key

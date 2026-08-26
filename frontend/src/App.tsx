@@ -9,11 +9,13 @@ import { SearchPalette } from "./components/SearchPalette";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Tabs } from "./components/Tabs";
 import { Topbar, type View } from "./components/Topbar";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { VaultPicker } from "./components/VaultPicker";
 import { NoteEditor } from "./editor/NoteEditor";
 import { api } from "./lib/api";
 import { useEngineEvents } from "./lib/useEngineEvents";
 import { useSettings } from "./lib/useSettings";
+import { useUpdater } from "./lib/useUpdater";
 import type { Constellation, Scene, VaultInfo } from "./lib/types";
 
 type EngineState = "demarrage" | "pret" | "absent";
@@ -40,6 +42,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const dialog = useDialog();
   const { settings, update: updateSettings } = useSettings();
+  const updater = useUpdater();
   /** Largeur suivie pendant le glissement, avant d'etre enregistree. */
   const [railWidth, setRailWidth] = useState<number | null>(null);
 
@@ -443,8 +446,16 @@ export default function App() {
           onChange={updateSettings}
           onChangeVault={() => setChangingVault(true)}
           onClose={() => setShowSettings(false)}
+          updateState={updater.state}
+          onCheckUpdate={() => void updater.chercher()}
         />
       )}
+
+      <UpdateBanner
+        state={updater.state}
+        onInstall={() => void updater.installer()}
+        onDismiss={updater.ignorer}
+      />
 
       {error && (
         <div className="toast" onClick={() => setError(null)}>

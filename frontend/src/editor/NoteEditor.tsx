@@ -428,7 +428,8 @@ export function NoteEditor({
         {!readOnly && (hovered || inserting) && (
           <div
             className="editor__handle"
-            style={{ top: (hovered?.top ?? 0) + 2 }}
+            // Centree sur le texte de la ligne, quelle que soit sa taille.
+            style={{ top: (hovered?.top ?? 0) + (hovered?.height ?? 0) / 2 }}
             onPointerDown={(event) => event.preventDefault()}
           >
             <button
@@ -548,6 +549,12 @@ function countWords(text: string): number {
 }
 
 /** Premier titre de la note, qui fait office de nom affiche. */
+/**
+ * Le titre d'une note : le `# ` de sa toute premiere ligne.
+ *
+ * Un titre ecrit plus bas dans le texte est un titre de section, pas le nom de
+ * la note — il ne doit pas la renommer pendant qu'on ecrit.
+ */
 function headingOf(text: string): string | null {
-  return /^#\s+(.+)$/m.exec(text)?.[1].trim() ?? null;
+  return /^#[ 	]+(.+)/.exec(text)?.[1].trim() ?? null;
 }

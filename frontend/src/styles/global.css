@@ -7,7 +7,7 @@
   /* Environnement */
   --bg-deep: #070b14;
   --bg: #0b1220;
-  --bg-raised: #050811;
+  --bg-raised: #080d1b;
   --bg-glass: rgba(5, 8, 17, 0.86);
   /* Le fond des notes, un ton a part du reste de l'environnement. */
   --bg-note: #081426;
@@ -1198,3 +1198,120 @@ code {
   color: var(--text-faint);
 }
 
+
+/* ============================================================
+   Mise a jour — bandeau discret, en bas a droite
+   ============================================================ */
+
+.maj {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 340px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-glass);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  animation: maj-entre var(--slow) var(--ease);
+}
+
+@keyframes maj-entre {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+.maj--echec {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.maj__texte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.maj__titre {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.maj__notes {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  /* Des notes de version bavardes ne doivent pas etirer le bandeau. */
+  max-height: 4.4em;
+  overflow: hidden;
+}
+
+.maj__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.maj__plus-tard,
+.maj__installer,
+.maj__fermer {
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.maj__plus-tard:hover,
+.maj__fermer:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.maj__installer {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.maj__installer:hover {
+  filter: brightness(1.12);
+}
+
+.maj__fermer {
+  padding: 2px 8px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.maj__jauge {
+  height: 3px;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--line);
+}
+
+.maj__jauge-remplie {
+  height: 100%;
+  background: var(--accent);
+  transition: width 180ms linear;
+}

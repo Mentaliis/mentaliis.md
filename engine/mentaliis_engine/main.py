@@ -52,11 +52,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# En developpement, l'interface est servie par Vite sur un autre port :
-# on autorise donc les origines locales uniquement.
+# L'interface n'a pas la meme adresse selon la facon dont on l'ouvre :
+#   - en developpement, Vite la sert sur http://localhost:1420 ;
+#   - une fois empaquetee, la fenetre native la sert depuis http://tauri.localhost
+#     sous Windows, et depuis tauri://localhost sur macOS et Linux.
+# Les trois doivent etre reconnues, sans jamais ouvrir la porte a l'exterieur.
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|tauri://localhost)$",
+    allow_origin_regex=(
+        r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?"
+        r"|https?://tauri\.localhost"
+        r"|tauri://localhost)$"
+    ),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

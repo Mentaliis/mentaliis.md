@@ -26,7 +26,16 @@ impl EngineHandle {
 }
 
 pub fn start<R: Runtime>(app: &AppHandle<R>) -> Result<EngineHandle, Box<dyn std::error::Error>> {
-    let mut command = build_command(app)?;
+    // Un moteur absent ne doit jamais empecher la fenetre de s'ouvrir : l'interface
+    // sait dire elle-meme que le moteur ne repond pas, ce qui vaut mieux qu'une
+    // application qui refuse de demarrer sans expliquer pourquoi.
+    let mut command = match build_command(app) {
+        Ok(command) => command,
+        Err(error) => {
+            eprintln!("Moteur introuvable ({error}).");
+            return Ok(EngineHandle(Mutex::new(None)));
+        }
+    };
 
     #[cfg(windows)]
     {
@@ -69,14 +78,18 @@ fn build_command<R: Runtime>(_app: &AppHandle<R>) -> Result<Command, Box<dyn std
 
 #[cfg(not(debug_assertions))]
 fn build_command<R: Runtime>(app: &AppHandle<R>) -> Result<Command, Box<dyn std::error::Error>> {
-    // Le binaire produit par PyInstaller est livre comme ressource de l'application.
+    // PyInstaller livre le moteur en dossier : l'executable a besoin du `_internal`
+    // pose a cote de lui. Le tout voyage dans les ressources, sous `engine/`.
     let name = if cfg!(windows) {
-        "mentaliis-engine.exe"
+        "engine/mentaliis-engine.exe"
     } else {
-        "mentaliis-engine"
+        "engine/mentaliis-engine"
     };
     let binary = app
         .path()
         .resolve(name, tauri::path::BaseDirectory::Resource)?;
+    if !binary.exists() {
+        return Err(format!("moteur introuvable : {}", binary.display()).into());
+    }
     Ok(Command::new(binary))
 }

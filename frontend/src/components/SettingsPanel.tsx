@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { Settings, VaultInfo } from "../lib/types";
+import type { UpdateState } from "../lib/useUpdater";
 
 const AGRANDISSEMENTS: { valeur: 1 | 2 | 3; nom: string; detail: string }[] = [
   { valeur: 1, nom: "1×", detail: "Taille normale" },
@@ -15,9 +16,19 @@ interface Props {
   onChange: (change: Partial<Settings>) => void;
   onChangeVault: () => void;
   onClose: () => void;
+  updateState: UpdateState;
+  onCheckUpdate: () => void;
 }
 
-export function SettingsPanel({ settings, vault, onChange, onChangeVault, onClose }: Props) {
+export function SettingsPanel({
+  settings,
+  vault,
+  onChange,
+  onChangeVault,
+  onClose,
+  updateState,
+  onCheckUpdate,
+}: Props) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -100,8 +111,47 @@ export function SettingsPanel({ settings, vault, onChange, onChangeVault, onClos
               </button>
             </div>
           </section>
+
+          <section className="settings__section">
+            <h2>Version</h2>
+            <p className="settings__hint">
+              Mentaliis va chercher lui-meme ses mises a jour au demarrage.
+            </p>
+            <div className="settings__vault">
+              <span className="settings__path">{etatDeMaj(updateState)}</span>
+              <button
+                type="button"
+                className="settings__action"
+                onClick={onCheckUpdate}
+                disabled={updateState.etat === "recherche"}
+              >
+                Rechercher maintenant
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
+}
+
+
+/** Ce que le panneau dit de la recherche de mise a jour, en clair. */
+function etatDeMaj(state: UpdateState): string {
+  switch (state.etat) {
+    case "recherche":
+      return "Recherche en cours…";
+    case "a-jour":
+      return "Mentaliis est a jour.";
+    case "disponible":
+      return `Version ${state.version} disponible.`;
+    case "telechargement":
+      return `Telechargement… ${Math.round(state.progres * 100)} %`;
+    case "installation":
+      return "Installation…";
+    case "echec":
+      return "Recherche impossible pour le moment.";
+    default:
+      return "Aucune recherche depuis l'ouverture.";
+  }
 }

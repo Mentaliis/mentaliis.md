@@ -12,6 +12,13 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-shell = "2"
+# Requis par `generate_context!` des que la configuration porte des plugins.
+serde_json = "1"
+
+# La mise a jour automatique ne concerne que les systemes de bureau.
+[target."cfg(any(target_os = \"windows\", target_os = \"macos\", target_os = \"linux\"))".dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [features]
 # Utilise par `tauri dev` pour desactiver certaines optimisations.

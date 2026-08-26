@@ -1,1 +1,1 @@
-{"default":{"identifier":"default","description":"Permissions accordees a la fenetre principale.","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open"]}}
+{"default":{"identifier":"default","description":"Permissions accordees a la fenetre principale.","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open","updater:default","process:allow-restart"]}}

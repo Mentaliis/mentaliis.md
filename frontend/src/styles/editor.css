@@ -443,6 +443,9 @@ body:has(.rail__grip.is-dragging) * {
   display: flex;
   align-items: flex-start;
   margin-left: calc(-39ch - 62px);
+  /* Le decalage vertical passe par `translate` et non `transform`, que
+     l'animation d'apparition occupe deja. */
+  translate: 0 -50%;
   animation: handle-in 120ms var(--ease);
 }
 

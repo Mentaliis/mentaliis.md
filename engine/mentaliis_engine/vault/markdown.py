@@ -11,7 +11,10 @@ import frontmatter
 # `![[image.png]]` embarque un fichier : ce n'est pas un lien vers une note.
 WIKILINK_RE = re.compile(r"(?<!!)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]")
 TAG_RE = re.compile(r"(?:^|\s)#([A-Za-z0-9_\-/]{1,60})")
-HEADING_RE = re.compile(r"^#\s+(.+)$", re.MULTILINE)
+#: Le titre d'une note est le `# ` de sa toute premiere ligne — pas un titre
+#: quelconque ecrit plus bas. Sans cela, ajouter un « # » au milieu du texte
+#: renommerait la note sous les yeux de celui qui ecrit.
+HEADING_RE = re.compile(r"\A#[ \t]+(.+)")
 
 
 def read(path: Path) -> tuple[str, dict[str, Any]]:
@@ -39,7 +42,7 @@ def write(path: Path, content: str, metadata: dict[str, Any] | None = None) -> N
 
 
 def title_of(path: Path, content: str, metadata: dict[str, Any]) -> str:
-    """Titre affiche sous une note : frontmatter > premier titre H1 > nom de fichier."""
+    """Titre affiche sous une note : frontmatter > titre de tete > nom de fichier."""
     fm_title = metadata.get("title")
     if isinstance(fm_title, str) and fm_title.strip():
         return fm_title.strip()

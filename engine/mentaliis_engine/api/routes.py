@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 
 from .. import settings
 from ..models import (
+    AddSceneImageRequest,
     Constellation,
     CreateDoorRequest,
     CreateNoteRequest,
@@ -27,12 +28,14 @@ from ..models import (
     RenameRequest,
     RetitleRequest,
     SaveNoteRequest,
+    SceneImage,
     SceneLink,
     SceneResponse,
     SetCameraRequest,
     SetCoverRequest,
     SetIconRequest,
     SetImagesRequest,
+    SetSizeRequest,
     Settings,
     VaultInfo,
 )
@@ -186,6 +189,20 @@ def put_move_global(payload: MoveRequest) -> dict:
 def get_media():
     """La reserve `.MEDIAS` : ses images, et les icones de `.MEDIAS/.SVG`."""
     return _guard(_vault().media)
+
+
+# --- Images posees dans une scene ---
+
+
+@router.post("/scene/image", response_model=SceneImage)
+def post_scene_image(payload: AddSceneImageRequest):
+    """Pose une image de la reserve dans une scene, a cote des portes."""
+    return _guard(_vault().add_scene_image, payload.parent, payload.path)
+
+
+@router.put("/scene/image/size", response_model=SceneImage)
+def put_scene_image_size(payload: SetSizeRequest, id: str = Query(...)):
+    return _guard(_vault().set_image_size, id, payload.size)
 
 
 # --- Traits entre elements ---

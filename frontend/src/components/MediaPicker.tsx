@@ -12,7 +12,7 @@ import { api } from "../lib/api";
 import type { MediaLibrary } from "../lib/types";
 
 /** Ce que la fenetre sert a choisir. */
-export type MediaKind = "vision" | "icone" | "note";
+export type MediaKind = "vision" | "icone" | "note" | "scene";
 
 interface Props {
   kind: MediaKind;
@@ -31,11 +31,15 @@ const TITRES: Record<MediaKind, string> = {
   vision: "Image de vision",
   icone: "Icone de la porte",
   note: "Image de la note",
+  scene: "Poser une image",
 };
 
 export function MediaPicker({ kind, subject, current, onPick, onClose }: Props) {
   const [media, setMedia] = useState<MediaLibrary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Dossier ouvert dans la reserve, relatif a sa racine. */
+  const [chemin, setChemin] = useState("");
+  const [cherche, setCherche] = useState("");
 
   const load = useCallback(() => {
     api
@@ -58,9 +62,32 @@ export function MediaPicker({ kind, subject, current, onPick, onClose }: Props) 
   }, [onClose]);
 
   const icones = kind === "icone";
-  const dossier = icones ? media?.icons_folder : media?.folder;
+  const racine = (icones ? media?.icons_folder : media?.folder) ?? "";
   const present = icones ? media?.icons_exist : media?.exists;
-  const items = (icones ? media?.icons : media?.images) ?? [];
+  const tout = (icones ? media?.icons : media?.images) ?? [];
+
+  // Le dossier ouvert, et ce qu'il contient directement.
+  const base = chemin ? `${racine}/${chemin}/` : `${racine}/`;
+  const dedans = tout.filter((path) => path.startsWith(base));
+  const filtre = cherche.trim().toLowerCase();
+
+  // En cherchant, on regarde tout le sous-arbre ; sinon, seulement ce niveau.
+  const items = filtre
+    ? dedans.filter((path) => path.toLowerCase().includes(filtre))
+    : dedans.filter((path) => !path.slice(base.length).includes("/"));
+
+  const sousDossiers = filtre
+    ? []
+    : [
+        ...new Set(
+          dedans
+            .map((path) => path.slice(base.length))
+            .filter((reste) => reste.includes("/"))
+            .map((reste) => reste.split("/")[0]),
+        ),
+      ].sort();
+
+  const miettes = chemin ? chemin.split("/") : [];
 
   return (
     <div
@@ -73,13 +100,41 @@ export function MediaPicker({ kind, subject, current, onPick, onClose }: Props) 
             <h2>{TITRES[kind]}</h2>
             <p className="media__hint">
               Pour « {subject} ». {icones ? `Les icones (${FORMATS})` : "Les images"} sont lues
-              dans <code>{dossier}</code>.
+              dans <code>{racine}</code>, sous-dossiers compris.
             </p>
           </div>
           <button type="button" className="media__close" onClick={onClose} title="Fermer">
             ×
           </button>
         </header>
+
+        {/* Le chemin ouvert, pour remonter d'un clic. */}
+        {media && present && (
+          <div className="media__bar">
+            <nav className="media__path">
+              <button type="button" onClick={() => setChemin("")}>
+                {racine}
+              </button>
+              {miettes.map((nom, index) => (
+                <span key={`${nom}-${index}`}>
+                  <span className="media__sep">›</span>
+                  <button
+                    type="button"
+                    onClick={() => setChemin(miettes.slice(0, index + 1).join("/"))}
+                  >
+                    {nom}
+                  </button>
+                </span>
+              ))}
+            </nav>
+            <input
+              className="media__search"
+              placeholder="Chercher partout…"
+              value={cherche}
+              onChange={(event) => setCherche(event.target.value)}
+            />
+          </div>
+        )}
 
         <div className="media__body">
           {error && <p className="media__error">{error}</p>}
@@ -107,15 +162,34 @@ export function MediaPicker({ kind, subject, current, onPick, onClose }: Props) 
 
           {media && !present && (
             <p className="media__empty">
-              Le dossier <code>{dossier}</code> n'existe pas encore. Creez-le avec ce nom exact,
+              Le dossier <code>{racine}</code> n'existe pas encore. Creez-le avec ce nom exact,
               puis rouvrez cette fenetre.
             </p>
           )}
 
-          {media && present && items.length === 0 && (
+          {media && present && sousDossiers.length > 0 && (
+            <ul className="media__folders">
+              {sousDossiers.map((nom) => (
+                <li key={nom}>
+                  <button
+                    type="button"
+                    onClick={() => setChemin(chemin ? `${chemin}/${nom}` : nom)}
+                  >
+                    <span className="media__folder-icon" aria-hidden="true">
+                      ▸
+                    </span>
+                    {nom}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {media && present && items.length === 0 && sousDossiers.length === 0 && (
             <p className="media__empty">
-              Aucun fichier dans <code>{dossier}</code>. Deposez-y vos
-              {icones ? ` icones (${FORMATS})` : " images"}, puis rouvrez cette fenetre.
+              {cherche
+                ? "Rien ne correspond a cette recherche."
+                : `Rien ici. Deposez vos ${icones ? "icones" : "images"} dans ce dossier.`}
             </p>
           )}
 

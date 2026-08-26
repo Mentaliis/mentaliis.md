@@ -17,6 +17,7 @@ import type {
   NoteSummary,
   Position,
   Scene,
+  SceneImage,
   SceneLink,
   Settings,
   VaultInfo,
@@ -102,6 +103,15 @@ export const api = {
 
   // --- Dossier des medias ---
   media: () => request<MediaLibrary>("/media"),
+
+  // --- Images posees dans une scene ---
+  addSceneImage: (parent: string, path: string) =>
+    request<SceneImage>("/scene/image", { method: "POST", ...body({ parent, path }) }),
+  setImageSize: (id: string, size: number) =>
+    request<SceneImage>(`/scene/image/size?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      ...body({ size }),
+    }),
 
   // --- Traits entre elements ---
   link: (source: string, target: string) =>

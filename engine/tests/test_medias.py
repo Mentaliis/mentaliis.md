@@ -264,3 +264,115 @@ def test_retitrer_vers_un_nom_pris_ne_recouvre_rien(vault):
     renommee = vault.retitle("Projets/Beta.md", "Alpha")
     assert renommee.id == "Projets/Alpha (1).md"
     assert (vault.root / "Projets" / "Alpha.md").exists()
+
+
+# --- Images posees dans une scene ---
+
+
+def images(vault, parent=""):
+    return vault.scene(parent).images
+
+
+def test_aucune_image_posee_au_depart(vault):
+    assert images(vault) == []
+
+
+def test_poser_une_image_dans_une_scene(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    assert posee.path == ".MEDIAS/cap.png"
+    assert posee.size == 1
+    assert [i.id for i in images(vault)] == [posee.id]
+
+
+def test_une_image_posee_nappartient_qu_a_sa_scene(vault):
+    vault.add_scene_image("Projets", ".MEDIAS/cap.png")
+    assert images(vault) == []
+    assert len(images(vault, "Projets")) == 1
+
+
+def test_une_image_hors_de_la_reserve_est_refusee(vault):
+    with pytest.raises(Exception):
+        vault.add_scene_image("", "Projets/ailleurs.png")
+
+
+def test_un_fichier_qui_nest_pas_une_image_est_refuse(vault):
+    (vault.root / ".MEDIAS" / "note.txt").write_text("bonjour", "utf-8")
+    with pytest.raises(Exception):
+        vault.add_scene_image("", ".MEDIAS/note.txt")
+
+
+def test_les_trois_tailles(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    for taille in (1, 2, 3):
+        assert vault.set_image_size(posee.id, taille).size == taille
+
+
+def test_une_taille_absurde_est_ramenee_dans_les_clous(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.layout.set_field(posee.id, "size", 99)
+    assert images(vault)[0].size == 3
+
+
+def test_une_image_posee_se_deplace(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.move(posee.id, 240, -120)
+    place = images(vault)[0]
+    assert (place.position.x, place.position.y) == (240, -120)
+
+
+def test_une_image_posee_se_relie_aux_autres(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.link(posee.id, "Projets")
+    liens = {(l.source, l.target) for l in vault.scene("").links}
+    assert liens == {tuple(sorted((posee.id, "Projets")))}
+
+
+def test_on_ne_relie_pas_deux_scenes(vault):
+    ici = vault.add_scene_image("", ".MEDIAS/cap.png")
+    ailleurs = vault.add_scene_image("Projets", ".MEDIAS/cap.png")
+    with pytest.raises(Exception):
+        vault.link(ici.id, ailleurs.id)
+
+
+def test_retirer_une_image_nefface_pas_le_fichier(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.delete(posee.id)
+    assert images(vault) == []
+    assert (vault.root / ".MEDIAS" / "cap.png").exists()
+
+
+def test_retirer_une_image_emporte_ses_traits(vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.link(posee.id, "Projets")
+    vault.delete(posee.id)
+    assert vault.layout.links() == []
+
+
+def test_les_images_posees_survivent_a_une_reouverture(tmp_path, vault):
+    posee = vault.add_scene_image("", ".MEDIAS/cap.png")
+    vault.set_image_size(posee.id, 3)
+    vault.move(posee.id, 10, 20)
+    relue = Vault(tmp_path).scene("").images[0]
+    assert (relue.path, relue.size, relue.position.x) == (".MEDIAS/cap.png", 3, 10)
+
+
+# --- Taille des images accrochees a une note ---
+
+
+def test_une_image_de_note_a_une_taille(vault):
+    from mentaliis_engine.models import AttachedImage
+
+    vault.set_images("Projets/idee.md", []) if (vault.root / "Projets" / "idee.md").exists() else None
+    (vault.root / "Projets" / "idee.md").write_text("# Idee\n", "utf-8")
+    vault.set_images("Projets/idee.md", [AttachedImage(path=".MEDIAS/cap.png", size=2)])
+    note = next(n for n in vault.scene("Projets").notes if n.id == "Projets/idee.md")
+    assert note.images[0].size == 2
+
+
+def test_la_taille_par_defaut_est_la_plus_petite(vault):
+    from mentaliis_engine.models import AttachedImage
+
+    (vault.root / "Projets" / "idee.md").write_text("# Idee\n", "utf-8")
+    vault.set_images("Projets/idee.md", [AttachedImage(path=".MEDIAS/cap.png")])
+    note = next(n for n in vault.scene("Projets").notes if n.id == "Projets/idee.md")
+    assert note.images[0].size == 1

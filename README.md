@@ -120,13 +120,18 @@ Ce qui fonctionne :
 - **Portes** : chaque dossier est une porte — ou un cerveau, au choix par clic droit —
   avec son image de vision au-dessus.
   Le nom du lieu ou l'on se trouve est rappele en capitales, tout en haut, au centre.
-- **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
+- **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images
+  accrochees, elles aussi en trois tailles.
 - **Traits** : relier deux elements d'une scene en tirant depuis leur poignee,
   les detacher d'un clic sur la croix. Autant de traits que voulu sur un meme
   element. Enregistres tout seuls dans le Vault.
 - **Reserve de medias** : `.MEDIAS`, a la racine du Vault, d'ou viennent toutes
-  les images de vision. Elle accueillera aussi sons et videos. Son nom est
-  impose : le logiciel ne reconnait que celui-la, et ne la cree jamais.
+  les images, sons, videos et fichiers. Son nom est impose : le logiciel ne
+  reconnait que celui-la, et ne la cree jamais. On y navigue depuis
+  l'application, sous-dossiers compris, avec une recherche qui traverse tout.
+- **Images posees** : une image de la reserve peut vivre seule dans une scene,
+  a cote des portes. Trois tailles — la premiere a l'echelle du cerveau — et
+  elle se relie comme n'importe quel autre element.
 - **Icones de portes** : `porte`, `cerveau`, ou vos propres icones rangees dans
   `.MEDIAS/.SVG` (svg, png, webp). Elles sont mises a l'echelle d'une porte,
   sans deformation, quelle que soit leur forme.

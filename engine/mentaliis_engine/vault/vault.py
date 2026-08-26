@@ -11,9 +11,11 @@ import math
 import shutil
 import time
 from pathlib import Path
+from uuid import uuid4
 
 from ..config import (
     AUDIO_EXTENSIONS,
+    IMAGE_EXTENSIONS,
     DOCUMENT_EXTENSIONS,
     ICON_EXTENSIONS,
     ICONS_DIR,
@@ -37,6 +39,7 @@ from ..models import (
     NoteLinks,
     NoteSummary,
     Position,
+    SceneImage,
     SceneLink,
     SceneResponse,
     VaultInfo,
@@ -61,7 +64,10 @@ ASSETS_DIR = "Assets"
 #: Cle sous laquelle le Vault retient ses reglages propres.
 CONFIG = "@config"
 
-IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg", ".avif"}
+#: Prefixe des images posees librement dans une scene. Elles ne sont pas des
+#: fichiers : ce sont des renvois vers la reserve, ranges dans le layout.
+IMAGE = "@image/"
+
 
 
 class VaultError(Exception):
@@ -159,13 +165,15 @@ class Vault:
             elif entry.suffix.lower() in NOTE_EXTENSIONS:
                 notes.append(self._note_summary(entry, parent=path))
 
+        images = self.scene_images(path)
         self._auto_place(doors, notes)
         return SceneResponse(
             path=path,
             name=self.name if not path else folder.name,
             doors=doors,
             notes=notes,
-            links=self._links_within({item.id for item in [*doors, *notes]}),
+            images=images,
+            links=self._links_within({item.id for item in [*doors, *notes, *images]}),
             camera=self.camera(path),
         )
 
@@ -176,6 +184,60 @@ class Vault:
             for source, target in self.layout.links()
             if source in present and target in present
         ]
+
+    # --- Images posees dans une scene ---
+
+    def scene_images(self, parent: str) -> list[SceneImage]:
+        """Les images posees dans cette scene, dans l'ordre ou elles sont venues."""
+        trouvees: list[SceneImage] = []
+        for key, entry in self.layout.entries(IMAGE):
+            if entry.get("parent") != parent or not isinstance(entry.get("path"), str):
+                continue
+            trouvees.append(
+                SceneImage(
+                    id=key,
+                    path=entry["path"],
+                    parent=parent,
+                    position=Position(x=entry.get("x", 0.0), y=entry.get("y", 0.0)),
+                    size=_taille(entry.get("size")),
+                    caption=entry.get("caption") or "",
+                )
+            )
+        return trouvees
+
+    def add_scene_image(self, parent: str, path: str) -> SceneImage:
+        """Pose une image de la reserve dans une scene."""
+        folder = self.resolve(parent)
+        if not folder.is_dir():
+            raise VaultError(f"Cette porte n'existe pas : {parent}")
+        self._check_media(path)
+
+        key = f"{IMAGE}{uuid4().hex[:8]}"
+        self.layout.set_field(key, "path", path)
+        self.layout.set_field(key, "parent", parent)
+        # Elle arrive au centre : on la deplacera ou l'on veut.
+        self.layout.set_position(key, 0.0, 0.0)
+        return SceneImage(id=key, path=path, parent=parent)
+
+    def set_image_size(self, image_id: str, size: int) -> SceneImage:
+        """Trois tailles, pour regarder de plus ou moins pres."""
+        entry = self.layout.get(image_id)
+        if not entry.get("path"):
+            raise VaultError(f"Cette image n'existe pas : {image_id}")
+        self.layout.set_field(image_id, "size", _taille(size))
+        return next(
+            image for image in self.scene_images(entry.get("parent", "")) if image.id == image_id
+        )
+
+    def _check_media(self, path: str) -> None:
+        """Une image posee vient de la reserve, comme toutes les autres."""
+        self.resolve(path)
+        if not path.startswith(MEDIAS_DIR + "/"):
+            raise VaultError(f"Une image doit venir de {MEDIAS_DIR}.")
+        if Path(path).suffix.lower() not in IMAGE_EXTENSIONS:
+            raise VaultError(f"Ce fichier n'est pas une image : {path}")
+        if not self.resolve(path).is_file():
+            raise VaultError(f"Cette image n'existe pas : {path}")
 
     # --- Reserve de medias ---
 
@@ -243,16 +305,24 @@ class Vault:
         """Attache deux elements par un trait."""
         if source == target:
             raise VaultError("Un element ne peut pas etre relie a lui-meme.")
-        for item_id in (source, target):
-            if not self.resolve(item_id).exists():
-                raise VaultError(f"Introuvable : {item_id}")
-        if Path(source).parent != Path(target).parent:
+        if self._scene_of(source) != self._scene_of(target):
             raise VaultError("Un trait ne relie que deux elements d'une meme scene.")
         self.layout.link(source, target)
         return SceneLink(source=source, target=target)
 
     def unlink(self, source: str, target: str) -> None:
         self.layout.unlink(source, target)
+
+    def _scene_of(self, item_id: str) -> str:
+        """Dans quelle scene vit cet element ? Une image posee le sait d'elle-meme."""
+        if item_id.startswith(IMAGE):
+            entry = self.layout.get(item_id)
+            if not entry.get("path"):
+                raise VaultError(f"Introuvable : {item_id}")
+            return entry.get("parent", "")
+        if not self.resolve(item_id).exists():
+            raise VaultError(f"Introuvable : {item_id}")
+        return Path(item_id).parent.as_posix().strip(".")
 
     # --- Cadrage ---
 
@@ -489,7 +559,9 @@ class Vault:
     # --- Operations communes ---
 
     def move(self, item_id: str, x: float, y: float) -> None:
-        self.resolve(item_id)  # valide que la cible est bien dans le Vault
+        # Une image posee n'est pas un fichier : elle n'a rien a valider sur le disque.
+        if not item_id.startswith(IMAGE):
+            self.resolve(item_id)  # valide que la cible est bien dans le Vault
         self.layout.set_position(item_id, x, y)
 
     def set_cover(self, door_id: str, cover: str | None) -> Door:
@@ -543,6 +615,10 @@ class Vault:
         return new_id
 
     def delete(self, item_id: str) -> None:
+        # Retirer une image posee n'efface aucun fichier : seul le renvoi disparait.
+        if item_id.startswith(IMAGE):
+            self.layout.forget(item_id)
+            return
         target = self.resolve(item_id)
         if target == self.root:
             raise VaultError("Le Vault lui-meme ne peut pas etre supprime.")
@@ -749,3 +825,11 @@ def _icon_of(stored: dict) -> str:
     if icon in BUILTIN_ICONS:
         return icon
     return icon if icon.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/") else "porte"
+
+
+def _taille(valeur: object) -> int:
+    """Une taille vaut 1, 2 ou 3 — jamais autre chose, meme ecrite a la main."""
+    try:
+        return min(3, max(1, int(valeur)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 1

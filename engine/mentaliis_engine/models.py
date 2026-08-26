@@ -18,6 +18,8 @@ class AttachedImage(BaseModel):
     path: str  # chemin relatif au Vault
     position: Position = Field(default_factory=Position)
     caption: str = ""
+    #: 1 petite, 2 moyenne, 3 grande — pour regarder de plus ou moins pres.
+    size: int = Field(default=1, ge=1, le=3)
 
 
 #: Les deux apparences fournies avec le logiciel.
@@ -70,6 +72,22 @@ class Camera(BaseModel):
     scale: float
 
 
+class SceneImage(BaseModel):
+    """Une image posee dans une scene, a cote des portes et des notes.
+
+    Elle n'est pas un fichier du Vault : c'est un renvoi vers un media de la
+    reserve, place ou l'on veut, et reliable comme n'importe quel element.
+    """
+
+    id: str  # cle interne, ex. "@image/3f2a"
+    path: str  # media de la reserve
+    parent: str
+    position: Position = Field(default_factory=Position)
+    #: 1 a l'echelle du cerveau, 2 et 3 de plus en plus grandes.
+    size: int = Field(default=1, ge=1, le=3)
+    caption: str = ""
+
+
 class SceneLink(BaseModel):
     """Un trait tire a la main entre deux elements d'une scene."""
 
@@ -84,6 +102,8 @@ class SceneResponse(BaseModel):
     name: str
     doors: list[Door] = Field(default_factory=list)
     notes: list[NoteSummary] = Field(default_factory=list)
+    #: Images posees librement dans la scene.
+    images: list[SceneImage] = Field(default_factory=list)
     #: Liens tires a la main entre les elements presents dans cette scene.
     links: list[SceneLink] = Field(default_factory=list)
     #: Cadrage retrouve tel qu'on l'avait laisse, ou None a la premiere visite.
@@ -172,6 +192,19 @@ class RetitleRequest(BaseModel):
     """Nouveau titre d'une note."""
 
     title: str
+
+
+class AddSceneImageRequest(BaseModel):
+    """Image a poser dans une scene."""
+
+    parent: str = ""
+    path: str
+
+
+class SetSizeRequest(BaseModel):
+    """Taille d'affichage : 1 petite, 2 moyenne, 3 grande."""
+
+    size: int = Field(ge=1, le=3)
 
 
 class LinkRequest(BaseModel):

@@ -7,7 +7,7 @@
   /* Environnement */
   --bg-deep: #070b14;
   --bg: #0b1220;
-  --bg-raised: #101a2e;
+  --bg-raised: #0f1a2e;
   --bg-glass: rgba(16, 26, 46, 0.86);
 
   /* Texte */
@@ -723,6 +723,55 @@ code {
   filter: drop-shadow(0 0 18px var(--accent));
 }
 
+/* ------------------------------------- Une image posee dans la scene */
+
+/* La plus petite est a l'echelle du cerveau : c'est le point de comparaison
+   naturel de la scene. Les deux autres sont la pour vraiment regarder. */
+.visuel--1 {
+  --visuel: 290px;
+}
+
+.visuel--2 {
+  --visuel: 460px;
+}
+
+.visuel--3 {
+  --visuel: 720px;
+}
+
+.visuel {
+  width: var(--visuel);
+  margin-left: calc(var(--visuel) / -2);
+}
+
+.visuel__cadre {
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  box-shadow: 0 18px 44px -24px rgba(0, 0, 0, 0.9);
+  transition:
+    border-color var(--fast) var(--ease),
+    transform var(--slow) var(--ease),
+    box-shadow var(--slow) var(--ease);
+}
+
+.visuel__cadre img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.visuel:hover .visuel__cadre {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 54px -22px rgba(0, 0, 0, 0.95);
+}
+
+.visuel.is-dragging .visuel__cadre {
+  border-color: var(--accent);
+}
+
 /* ------------------------------------------------------- Un cerveau */
 
 /* Deux fois plus grand qu'une porte, volontairement : le cerveau represente
@@ -816,13 +865,26 @@ code {
 }
 
 /* Images accrochees autour de la note, reliees par un fil. */
+/* Trois tailles pour une image accrochee : un coup d'oeil, un regard, un examen. */
+.note__pinned--1 {
+  --pinned: 96px;
+}
+
+.note__pinned--2 {
+  --pinned: 180px;
+}
+
+.note__pinned--3 {
+  --pinned: 320px;
+}
+
 .note__pinned {
   position: absolute;
   top: 0;
   left: 50%;
-  width: 72px;
-  height: 72px;
-  margin: -36px 0 0 -36px;
+  width: var(--pinned, 96px);
+  height: var(--pinned, 96px);
+  margin: calc(var(--pinned, 96px) / -2) 0 0 calc(var(--pinned, 96px) / -2);
   color: var(--line-strong);
   cursor: grab;
   transition: transform var(--fast) var(--ease);

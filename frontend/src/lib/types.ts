@@ -9,6 +9,19 @@ export interface AttachedImage {
   path: string;
   position: Position;
   caption: string;
+  /** 1 petite, 2 moyenne, 3 grande — pour regarder de plus ou moins pres. */
+  size: number;
+}
+
+/** Une image posee dans une scene, a cote des portes et des notes. */
+export interface SceneImage {
+  id: string;
+  path: string;
+  parent: string;
+  position: Position;
+  /** 1 a l'echelle du cerveau, 2 et 3 de plus en plus grandes. */
+  size: number;
+  caption: string;
 }
 
 /**
@@ -66,6 +79,8 @@ export interface Scene {
   name: string;
   doors: Door[];
   notes: NoteSummary[];
+  /** Images posees librement dans la scene. */
+  images: SceneImage[];
   links: SceneLink[];
   /** Cadrage retrouve tel qu'on l'avait laisse, ou null a la premiere visite. */
   camera: Camera | null;

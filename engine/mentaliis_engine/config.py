@@ -24,8 +24,27 @@ MEDIAS_DIR = ".MEDIAS"
 # Les icones personnalisees des portes, dans un sous-dossier lui aussi impose.
 ICONS_DIR = ".SVG"
 
-# Seuls formats acceptes pour une icone de porte.
+# Seuls formats acceptes pour une icone de porte, dans `.MEDIAS/.SVG`.
+# Cette liste-la reste volontairement etroite : une icone doit rester nette.
 ICON_EXTENSIONS = {".svg", ".png", ".webp"}
+
+# Images reconnues partout ailleurs, et notamment dans `.MEDIAS`.
+IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".jfif",
+    ".gif",
+    ".webp",
+    ".avif",
+    ".bmp",
+    ".svg",
+    ".tif",
+    ".tiff",
+    ".ico",
+    ".heic",
+    ".heif",
+}
 
 # Ce que la reserve sait presenter, par famille.
 VIDEO_EXTENSIONS = {".mp4", ".webm", ".ogv", ".mov", ".mkv"}

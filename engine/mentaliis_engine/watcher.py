@@ -16,8 +16,14 @@ from pathlib import Path
 
 from watchfiles import awatch
 
-from .config import ICON_EXTENSIONS, IGNORED_DIRS, MEDIAS_DIR, NOTE_EXTENSIONS
-from .vault.vault import IMAGE_EXTENSIONS, Vault
+from .config import (
+    ICON_EXTENSIONS,
+    IGNORED_DIRS,
+    IMAGE_EXTENSIONS,
+    MEDIAS_DIR,
+    NOTE_EXTENSIONS,
+)
+from .vault.vault import Vault
 
 #: Extensions dont un changement interesse l'interface.
 WATCHED_EXTENSIONS = NOTE_EXTENSIONS | IMAGE_EXTENSIONS | ICON_EXTENSIONS

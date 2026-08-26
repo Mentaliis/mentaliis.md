@@ -79,6 +79,10 @@ class Layout:
     def get(self, item_id: str) -> dict[str, Any]:
         return self._items.get(item_id, {})
 
+    def entries(self, prefix: str) -> list[tuple[str, dict[str, Any]]]:
+        """Toutes les entrees dont la cle commence ainsi, dans l'ordre de lecture."""
+        return [(key, value) for key, value in self._items.items() if key.startswith(prefix)]
+
     def position(self, item_id: str) -> dict[str, float] | None:
         entry = self._items.get(item_id)
         if entry and "x" in entry and "y" in entry:

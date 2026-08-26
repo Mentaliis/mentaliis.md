@@ -88,6 +88,7 @@ export function NoteNode({
         ...paths.map((path, index) => ({
           path,
           caption: "",
+          size: 1,
           // Decale chaque image d'une salve pour qu'aucune n'en cache une autre.
           position: { x: origin.x + index * 24, y: origin.y + index * 18 },
         })),
@@ -128,6 +129,9 @@ export function NoteNode({
             )
           }
           onDetach={() => void persist(shown.filter((_, at) => at !== index))}
+          onResize={(size) =>
+            void persist(shown.map((item, at) => (at === index ? { ...item, size } : item)))
+          }
         />
       ))}
 
@@ -158,23 +162,32 @@ function PinnedImage({
   onMove,
   onCommit,
   onDetach,
+  onResize,
 }: {
   image: AttachedImage;
   scale: number;
   onMove: (position: Position) => void;
   onCommit: (position: Position) => void;
   onDetach: () => void;
+  onResize: (size: number) => void;
 }) {
   const dialog = useDialog();
   const { dragging, handlers } = useDraggable({ position: image.position, scale, onMove, onCommit });
 
   return (
     <div
-      className={`note__pinned${dragging ? " is-dragging" : ""}`}
+      className={`note__pinned note__pinned--${image.size}${dragging ? " is-dragging" : ""}`}
       style={{ transform: `translate(${image.position.x}px, ${image.position.y}px)` }}
       title={image.caption || image.path}
       {...handlers}
-      onContextMenu={async (event) => {
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        // Un clic droit fait tourner les trois tailles ; le detachement passe
+        // par la croix, pour ne pas perdre une image d'un geste distrait.
+        onResize((image.size % 3) + 1);
+      }}
+      onDoubleClick={async (event) => {
         event.preventDefault();
         event.stopPropagation();
         const detach = await dialog.confirm({

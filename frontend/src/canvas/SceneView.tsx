@@ -2,11 +2,19 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
-import type { Door, NoteSummary, Position, Scene, SceneLink } from "../lib/types";
+import type {
+  Door,
+  NoteSummary,
+  Position,
+  Scene,
+  SceneImage,
+  SceneLink,
+} from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
 import { MediaPicker, type MediaKind } from "../components/MediaPicker";
 import { DoorNode } from "./DoorNode";
+import { ImageNode } from "./ImageNode";
 import { NoteNode } from "./NoteNode";
 import { type Anchor, SceneLinks } from "./SceneLinks";
 import { useRememberedCamera, useViewport } from "./useViewport";
@@ -39,6 +47,7 @@ export function SceneView({
 }: Props) {
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
+  const [visuels, setVisuels] = useState<SceneImage[]>(scene.images);
   const [menu, setMenu] = useState<Menu | null>(null);
   /** Porte dont on choisit la vision ou l'apparence, et lequel des deux. */
   const [picking, setPicking] = useState<{
@@ -60,6 +69,7 @@ export function SceneView({
   useEffect(() => {
     setDoors(scene.doors);
     setNotes(scene.notes);
+    setVisuels(scene.images);
     setLinks(scene.links);
   }, [scene]);
 
@@ -80,7 +90,7 @@ export function SceneView({
 
   /** Un trait s'accroche au centre de l'element. */
   const anchors = new Map<string, Anchor>();
-  for (const item of [...doors, ...notes]) {
+  for (const item of [...doors, ...notes, ...visuels]) {
     anchors.set(item.id, {
       x: item.position.x,
       y: item.position.y - 1 + (heights.get(item.id) ?? 130) / 2,
@@ -164,7 +174,7 @@ export function SceneView({
     scene.path,
     scene.camera,
     viewport,
-    [...scene.doors, ...scene.notes].map((item) => item.position),
+    [...scene.doors, ...scene.notes, ...scene.images].map((item) => item.position),
     surface,
   );
 
@@ -173,6 +183,7 @@ export function SceneView({
       items.map((item) => (item.id === id ? { ...item, position } : item));
     setDoors((prev) => apply(prev));
     setNotes((prev) => apply(prev));
+    setVisuels((prev) => apply(prev));
   }, []);
 
   const commit = useCallback(
@@ -273,6 +284,43 @@ export function SceneView({
     [dialog, onSceneChanged],
   );
 
+  /** Menu d'une image posee : sa taille, et le moyen de la retirer. */
+  const imageMenu = useCallback(
+    (image: SceneImage): MenuItem[] => [
+      {
+        label: "Taille",
+        submenu: [1, 2, 3].map((taille) => ({
+          label: ["Petite", "Moyenne", "Grande"][taille - 1],
+          checked: image.size === taille,
+          action: async () => {
+            try {
+              await api.setImageSize(image.id, taille);
+              onSceneChanged();
+            } catch (problem) {
+              onError((problem as Error).message);
+            }
+          },
+        })),
+      },
+      {
+        label: "Retirer de la scene",
+        danger: true,
+        action: async () => {
+          const sure = await dialog.confirm({
+            title: "Retirer cette image ?",
+            message: "Elle disparait de la scene, mais le fichier reste dans la reserve.",
+            confirmLabel: "Retirer",
+            danger: true,
+          });
+          if (!sure) return;
+          await api.remove(image.id);
+          onSceneChanged();
+        },
+      },
+    ],
+    [dialog, onError, onSceneChanged],
+  );
+
   const backgroundMenu = useCallback(
     (): MenuItem[] => [
       {
@@ -290,6 +338,11 @@ export function SceneView({
             onOpenNote(note.id);
           }
         },
+      },
+      {
+        label: "Poser une image",
+        action: () =>
+          setPicking({ kind: "scene", id: "@scene", subject: scene.name, current: null }),
       },
       {
         label: "Nouvelle porte",
@@ -351,6 +404,18 @@ export function SceneView({
               onContextMenu={(event) =>
                 openMenu(event, itemMenu(door.id, door.name, door))
               }
+            />
+          ))}
+
+          {visuels.map((image) => (
+            <ImageNode
+              key={image.id}
+              image={image}
+              scale={viewport.camera.scale}
+              onMove={(position) => moveLocal(image.id, position)}
+              onCommit={(position) => commit(image.id, position)}
+              onStartLink={(event) => startLink(image.id, event)}
+              onContextMenu={(event) => openMenu(event, imageMenu(image))}
             />
           ))}
 
@@ -417,12 +482,15 @@ export function SceneView({
                 await api.setIcon(choix.id, valeur ?? "porte");
               } else if (choix.kind === "vision") {
                 await api.setCover(choix.id, valeur);
+              } else if (choix.id === "@scene" && valeur) {
+                // Une image posee dans la scene, independante de toute note.
+                await api.addSceneImage(scene.path, valeur);
               } else if (valeur) {
                 // Une image de note s'ajoute a celles deja accrochees.
                 const note = notes.find((item) => item.id === choix.id);
                 await api.setImages(choix.id, [
                   ...(note?.images ?? []),
-                  { path: valeur, caption: "", position: { x: 130, y: -80 } },
+                  { path: valeur, caption: "", size: 1, position: { x: 130, y: -80 } },
                 ]);
               }
               onSceneChanged();

@@ -1398,6 +1398,65 @@ body:has(.rail__grip.is-dragging) * {
   background: var(--accent-soft);
 }
 
+/* Le chemin ouvert dans la reserve, et la recherche globale. */
+.media__bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.media__path {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  font-size: 12px;
+}
+
+.media__path button {
+  padding: 3px 5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.media__path button:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.media__path span:last-child button {
+  color: var(--text);
+}
+
+.media__sep {
+  color: var(--text-faint);
+}
+
+.media__search {
+  flex-shrink: 0;
+  width: 170px;
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  outline: none;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.media__search:focus {
+  border-color: var(--accent);
+}
+
+.media__folder-icon {
+  margin-right: 8px;
+  color: var(--accent);
+}
+
 .media__body {
   flex: 1;
   min-height: 120px;

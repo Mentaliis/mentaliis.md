@@ -2,11 +2,16 @@
 
 export interface Insertion {
   label: string;
+  /** Nom de l'icone affichee devant, cf. `icons.tsx`. */
+  icon: string;
   /** Texte insere. `|` marque ou placer le curseur ensuite. */
   snippet: string;
   /** Doit commencer sur une ligne vide. */
   block?: boolean;
+  /** Rappel du raccourci markdown, affiche a droite. */
   hint?: string;
+  /** Ouvre d'abord la reserve, filtree sur cette famille de medias. */
+  media?: "image" | "video" | "audio" | "fichier";
 }
 
 export interface InsertGroup {
@@ -16,61 +21,69 @@ export interface InsertGroup {
 
 export const INSERT_GROUPS: InsertGroup[] = [
   {
-    name: "Structure",
+    name: "Blocs de base",
     items: [
-      { label: "Titre 1", snippet: "# |", block: true },
-      { label: "Titre 2", snippet: "## |", block: true },
-      { label: "Titre 3", snippet: "### |", block: true },
-      { label: "Separateur", snippet: "---\n|", block: true },
-      { label: "Citation", snippet: "> |", block: true },
-      { label: "Bloc de code", snippet: "```\n|\n```", block: true },
-    ],
-  },
-  {
-    name: "Listes",
-    items: [
-      { label: "Liste a puces", snippet: "- |", block: true },
-      { label: "Liste numerotee", snippet: "1. |", block: true },
-      { label: "Case a cocher", snippet: "- [ ] |", block: true },
+      { label: "Texte", icon: "texte", snippet: "|", block: true },
+      { label: "Titre 1", icon: "h1", snippet: "# |", block: true, hint: "#" },
+      { label: "Titre 2", icon: "h2", snippet: "## |", block: true, hint: "##" },
+      { label: "Titre 3", icon: "h3", snippet: "### |", block: true, hint: "###" },
+      { label: "Titre 4", icon: "h4", snippet: "#### |", block: true, hint: "####" },
+      { label: "Liste a puces", icon: "puces", snippet: "- |", block: true, hint: "-" },
+      { label: "Liste numerotee", icon: "numeros", snippet: "1. |", block: true, hint: "1." },
+      { label: "Liste de taches", icon: "taches", snippet: "- [ ] |", block: true, hint: "[]" },
+      { label: "Citation", icon: "citation", snippet: "> |", block: true, hint: ">" },
+      { label: "Separateur", icon: "separateur", snippet: "---\n|", block: true, hint: "---" },
       {
         label: "Tableau",
+        icon: "tableau",
         snippet: "| Colonne | Colonne |\n| --- | --- |\n| | |",
         block: true,
       },
     ],
   },
   {
+    name: "Media",
+    items: [
+      { label: "Image", icon: "image", snippet: "![[|]]", block: true, media: "image" },
+      { label: "Video", icon: "video", snippet: "![[|]]", block: true, media: "video" },
+      { label: "Audio", icon: "audio", snippet: "![[|]]", block: true, media: "audio" },
+      { label: "Code", icon: "code", snippet: "```\n|\n```", block: true, hint: "```" },
+      { label: "Fichier", icon: "fichier", snippet: "![[|]]", block: true, media: "fichier" },
+    ],
+  },
+  {
     name: "Mise en forme",
     items: [
-      { label: "Gras", snippet: "**|**" },
-      { label: "Italique", snippet: "*|*" },
-      { label: "Barre", snippet: "~~|~~" },
-      { label: "Code", snippet: "`|`" },
-      { label: "Lien vers une note", snippet: "[[|]]" },
-      { label: "Lien web", snippet: "[|](https://)" },
+      { label: "Gras", icon: "gras", snippet: "**|**" },
+      { label: "Italique", icon: "italique", snippet: "*|*" },
+      { label: "Barre", icon: "barre", snippet: "~~|~~" },
+      { label: "Code en ligne", icon: "code", snippet: "`|`" },
+      { label: "Lien vers une note", icon: "note", snippet: "[[|]]", hint: "[[" },
+      { label: "Lien web", icon: "lien", snippet: "[|](https://)" },
     ],
   },
   {
     name: "Mathematiques",
     items: [
-      { label: "Formule en ligne", snippet: "$|$" },
-      { label: "Formule en bloc", snippet: "$$\n|\n$$", block: true },
-      { label: "Fraction", snippet: "$\\frac{|}{}$" },
-      { label: "Racine", snippet: "$\\sqrt{|}$" },
-      { label: "Puissance", snippet: "$x^{|}$" },
-      { label: "Indice", snippet: "$x_{|}$" },
-      { label: "Somme", snippet: "$\\sum_{i=1}^{n} |$" },
-      { label: "Integrale", snippet: "$\\int_{a}^{b} |$" },
-      { label: "Limite", snippet: "$\\lim_{x \\to 0} |$" },
-      { label: "Matrice", snippet: "$$\\begin{pmatrix} | & \\\\ & \\end{pmatrix}$$", block: true },
+      { label: "Formule en ligne", icon: "formule", snippet: "$|$" },
+      { label: "Formule en bloc", icon: "formule", snippet: "$$\n|\n$$", block: true },
+      { label: "Fraction", icon: "formule", snippet: "$\\frac{|}{}$" },
+      { label: "Racine", icon: "formule", snippet: "$\\sqrt{|}$" },
+      { label: "Puissance", icon: "formule", snippet: "$x^{|}$" },
     ],
   },
 ];
 
-/** Symboles inseres tels quels, en un clic. */
+/** Un symbole mathematique, insere en LaTeX. */
+export interface MathSymbol {
+  glyph: string;
+  latex: string;
+  name: string;
+}
+
 export interface SymbolGroup {
   name: string;
-  symbols: { glyph: string; latex: string; name: string }[];
+  symbols: MathSymbol[];
 }
 
 export const SYMBOL_GROUPS: SymbolGroup[] = [

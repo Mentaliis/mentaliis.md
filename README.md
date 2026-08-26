@@ -131,10 +131,16 @@ Ce qui fonctionne :
   `.MEDIAS/.SVG` (svg, png, webp). Elles sont mises a l'echelle d'une porte,
   sans deformation, quelle que soit leur forme.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
-- **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.
-  Taper `# ` donne un titre aussitot, `---` un trait, `- [ ]` une case a cocher
-  cliquable. La syntaxe ne reapparait que quand le curseur entre dans l'element.
-  Le fichier sur le disque, lui, reste du markdown parfaitement ordinaire.
+- **Ecriture sans code visible** : on ne voit jamais `# Titre`, seulement un titre.
+  Ni les etoiles du gras, ni les barres d'un tableau, ni les crochets d'un lien.
+  Pour changer le niveau d'un titre, on tape `##` devant : le nouveau marqueur
+  remplace l'ancien sans jamais s'afficher. Le fichier, lui, reste du markdown
+  parfaitement ordinaire.
+- **Un « + » par ligne** : il vient se poser en fondu devant la ligne survolee, et
+  ouvre un menu ou chaque bloc porte son icone et son raccourci.
+- **Tableaux modifiables sur place** : on ecrit dans les cases, et deux poignees
+  ajoutent une ligne ou une colonne.
+- **Medias** : images, videos, sons et fichiers, joues ou ouvrables dans la note.
 - **Deux modes** : *ecriture* (par defaut) et *lecture*, qui verrouille le texte
   et n'affiche plus aucune syntaxe — la note y est purement consultative.
 - **Titre d'une note** : affiche une seule fois, en grand, et fige. Il ne change

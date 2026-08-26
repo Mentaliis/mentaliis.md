@@ -205,6 +205,14 @@ class SetCameraRequest(BaseModel):
     camera: Camera
 
 
+class MediaFile(BaseModel):
+    """Un fichier de la reserve, avec la famille dont il releve."""
+
+    path: str
+    #: image, video, audio ou fichier — c'est elle qui decide du rendu.
+    kind: str
+
+
 class MediaLibrary(BaseModel):
     """La reserve de medias du Vault, au nom impose."""
 
@@ -214,6 +222,8 @@ class MediaLibrary(BaseModel):
     exists: bool = False
     #: Images qu'il contient, chemins relatifs au Vault.
     images: list[str] = Field(default_factory=list)
+    #: Tout ce qu'elle contient, images comprises, par famille.
+    files: list[MediaFile] = Field(default_factory=list)
     #: Sous-dossier des icones de portes.
     icons_folder: str
     icons_exist: bool = False

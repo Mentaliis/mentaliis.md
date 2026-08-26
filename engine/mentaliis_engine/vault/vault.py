@@ -13,12 +13,15 @@ import time
 from pathlib import Path
 
 from ..config import (
+    AUDIO_EXTENSIONS,
+    DOCUMENT_EXTENSIONS,
     ICON_EXTENSIONS,
     ICONS_DIR,
     IGNORED_DIRS,
     MEDIAS_DIR,
     NOTE_EXTENSIONS,
     SETTINGS_FILE,
+    VIDEO_EXTENSIONS,
     VAULT_META_DIR,
     app_data_dir,
 )
@@ -28,6 +31,7 @@ from ..models import (
     Constellation,
     Door,
     BUILTIN_ICONS,
+    MediaFile,
     MediaLibrary,
     Note,
     NoteLinks,
@@ -208,10 +212,30 @@ class Vault:
                 # Les icones ont leur propre rayon : on ne les melange pas aux visions.
                 if not path.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/")
             ],
+            files=self._media_files(),
             icons_folder=f"{MEDIAS_DIR}/{ICONS_DIR}",
             icons_exist=self.icons_dir.is_dir(),
             icons=self._files_under(self.icons_dir, ICON_EXTENSIONS),
         )
+
+    def _media_files(self) -> list[MediaFile]:
+        """Tout ce que la reserve contient, range par famille."""
+        familles = {
+            "image": IMAGE_EXTENSIONS,
+            "video": VIDEO_EXTENSIONS,
+            "audio": AUDIO_EXTENSIONS,
+            "fichier": DOCUMENT_EXTENSIONS,
+        }
+        connues = set().union(*familles.values())
+        trouves: list[MediaFile] = []
+        for path in self._files_under(self.medias_dir, connues):
+            # Les icones ont leur propre rayon : elles n'entrent pas dans les notes.
+            if path.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/"):
+                continue
+            suffix = Path(path).suffix.lower()
+            kind = next(nom for nom, exts in familles.items() if suffix in exts)
+            trouves.append(MediaFile(path=path, kind=kind))
+        return trouves
 
     # --- Traits entre elements ---
 

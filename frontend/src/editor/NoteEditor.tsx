@@ -22,7 +22,9 @@ import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
 import { InsertMenu } from "./InsertMenu";
 import type { Insertion } from "./insertions";
+import { lineHandle, type HoveredLine } from "./lineHandle";
 import { livePreview } from "./livePreview";
+import { normaliseMarqueurs } from "./normalise";
 import { mentaliisTheme } from "./theme";
 
 const AUTOSAVE_DELAY = 600;
@@ -57,6 +59,8 @@ export function NoteEditor({
   const [status, setStatus] = useState<"pret" | "modifie" | "enregistre">("pret");
   const [error, setError] = useState<string | null>(null);
   const [inserting, setInserting] = useState(false);
+  /** Ligne survolee : c'est devant elle que se pose la poignee « + ». */
+  const [hovered, setHovered] = useState<HoveredLine | null>(null);
   const [showLinks, setShowLinks] = useState(true);
   const dialog = useDialog();
 
@@ -163,12 +167,16 @@ export function NoteEditor({
       // `markdownLanguage` en base : c'est lui qui apporte les tableaux,
       // les cases a cocher et le texte barre.
       markdown({ base: markdownLanguage }),
+      // Taper « ## » devant un titre en change le niveau, sans jamais montrer le code.
+      normaliseMarqueurs(),
       EditorView.lineWrapping,
       mentaliisTheme,
       // En lecture, la syntaxe ne se devoile jamais : la note reste consultative.
       livePreview((target) => void latest.current.followLink(target), !readOnly),
       placeholder("Ecrivez ici. Tapez « # » pour un titre, « - [ ] » pour une case."),
     ];
+
+    if (!readOnly) extensions.push(lineHandle(setHovered));
 
     if (readOnly) {
       extensions.push(EditorState.readOnly.of(true), EditorView.editable.of(false));
@@ -282,6 +290,37 @@ export function NoteEditor({
     editor.focus();
   }, []);
 
+  /**
+   * Insere devant une ligne precise — celle que porte la poignee « + ».
+   *
+   * Une ligne deja ecrite garde son texte : le bloc vient se poser juste apres.
+   * Une ligne vide accueille le bloc a sa place.
+   */
+  const insertAt = useCallback(
+    (lineFrom: number | undefined, snippet: string, block = false) => {
+      const editor = view.current;
+      if (!editor) return;
+      if (lineFrom === undefined) return insert(snippet, block);
+
+      const line = editor.state.doc.lineAt(Math.min(lineFrom, editor.state.doc.length));
+      const vide = line.text.trim() === "";
+      const debut = vide ? line.from : line.to;
+      const prefix = vide ? "" : "\n";
+
+      const caret = snippet.indexOf("|");
+      const texte = prefix + snippet.replace("|", "");
+      const at = debut + prefix.length + (caret === -1 ? texte.length - prefix.length : caret);
+
+      editor.dispatch({
+        changes: { from: debut, to: vide ? line.to : debut, insert: texte },
+        selection: { anchor: at },
+        scrollIntoView: true,
+      });
+      editor.focus();
+    },
+    [insert],
+  );
+
   /** Insere un symbole, en ouvrant une formule si le curseur n'est pas deja dedans. */
   const insertSymbol = useCallback(
     (latex: string) => {
@@ -354,28 +393,6 @@ export function NoteEditor({
         </div>
 
         <div className="editor__actions">
-          {mode === "ecriture" && (
-            <div className="editor__insert">
-              <button
-                type="button"
-                className={`editor__plus${inserting ? " is-active" : ""}`}
-                title="Inserer un bloc, un symbole ou une image"
-                onClick={() => setInserting((open) => !open)}
-              >
-                +
-              </button>
-              {inserting && (
-                <InsertMenu
-                  onInsert={(item: Insertion) => insert(item.snippet, item.block)}
-                  onSymbol={insertSymbol}
-                  onImage={insertImage}
-                  onUpload={upload}
-                  onClose={() => setInserting(false)}
-                />
-              )}
-            </div>
-          )}
-
           <div className="editor__modes">
             <button
               type="button"
@@ -398,13 +415,52 @@ export function NoteEditor({
       </header>
 
       <div
-        ref={host}
-        className={`editor__surface${readOnly ? " is-locked" : ""}`}
+        className="editor__stage"
         onDrop={onDrop}
         onDragOver={(event) => {
           if (event.dataTransfer.types.includes("Files")) event.preventDefault();
         }}
-      />
+      >
+        <div ref={host} className={`editor__surface${readOnly ? " is-locked" : ""}`} />
+
+        {/* La poignee vient se poser devant la ligne survolee, et s'efface en
+            fondu des qu'on la quitte. */}
+        {!readOnly && (hovered || inserting) && (
+          <div
+            className="editor__handle"
+            style={{ top: (hovered?.top ?? 0) + 2 }}
+            onPointerDown={(event) => event.preventDefault()}
+          >
+            <button
+              type="button"
+              className={`editor__plus${inserting ? " is-active" : ""}`}
+              title="Inserer un bloc, un media, un symbole"
+              aria-label="Inserer"
+              onClick={() => setInserting((open) => !open)}
+            >
+              +
+            </button>
+            {inserting && (
+              <InsertMenu
+                onInsert={(item: Insertion) => {
+                  setInserting(false);
+                  insertAt(hovered?.from, item.snippet, item.block);
+                }}
+                onSymbol={(latex) => {
+                  setInserting(false);
+                  insertSymbol(latex);
+                }}
+                onMedia={(path) => {
+                  setInserting(false);
+                  insertAt(hovered?.from, `![[${path}]]`, true);
+                }}
+                onUpload={upload}
+                onClose={() => setInserting(false)}
+              />
+            )}
+          </div>
+        )}
+      </div>
 
       {links && neighbours > 0 && (
         <section className={`links${showLinks ? "" : " is-folded"}`}>

@@ -1,23 +1,34 @@
-/** Le menu du bouton « + » : tout ce qu'on peut glisser dans une note. */
+/**
+ * Le menu du « + » : tout ce qu'on peut poser dans une note.
+ *
+ * Chaque entree porte son icone et le raccourci markdown qui la declenche, pour
+ * qu'on finisse par s'en passer. Choisir un media ouvre la reserve, filtree sur
+ * la famille demandee.
+ */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
+import type { MediaFile } from "../lib/types";
+import { ICONS } from "./icons";
 import { INSERT_GROUPS, SYMBOL_GROUPS, type Insertion } from "./insertions";
 
-type Panel = "blocs" | "symboles" | "images";
+type Panel = "blocs" | "symboles";
 
 interface Props {
   onInsert: (insertion: Insertion) => void;
   /** Insere un symbole mathematique dans une formule. */
   onSymbol: (latex: string) => void;
-  onImage: (path: string) => void;
+  /** Insere un media du Vault, par son chemin. */
+  onMedia: (path: string) => void;
   onUpload: (file: File) => Promise<void>;
   onClose: () => void;
 }
 
-export function InsertMenu({ onInsert, onSymbol, onImage, onUpload, onClose }: Props) {
+export function InsertMenu({ onInsert, onSymbol, onMedia, onUpload, onClose }: Props) {
   const [panel, setPanel] = useState<Panel>("blocs");
-  const [assets, setAssets] = useState<string[] | null>(null);
+  /** Famille de medias en cours de choix, quand on vient de cliquer « Image »… */
+  const [famille, setFamille] = useState<string | null>(null);
+  const [reserve, setReserve] = useState<MediaFile[] | null>(null);
   const [filter, setFilter] = useState("");
   const element = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
@@ -36,28 +47,98 @@ export function InsertMenu({ onInsert, onSymbol, onImage, onUpload, onClose }: P
   }, [onClose]);
 
   useEffect(() => {
-    if (panel !== "images" || assets) return;
+    if (!famille || reserve) return;
     api
-      .assets()
-      .then(setAssets)
-      .catch(() => setAssets([]));
-  }, [assets, panel]);
+      .media()
+      .then((media) => setReserve(media.files))
+      .catch(() => setReserve([]));
+  }, [famille, reserve]);
 
-  const shown = (assets ?? []).filter((path) =>
-    path.toLowerCase().includes(filter.trim().toLowerCase()),
-  );
+  const proposes = useMemo(() => {
+    const cherche = filter.trim().toLowerCase();
+    return (reserve ?? [])
+      .filter((file) => file.kind === famille)
+      .filter((file) => file.path.toLowerCase().includes(cherche));
+  }, [famille, filter, reserve]);
+
+  // --- Choix d'un media ---
+
+  if (famille) {
+    return (
+      <div ref={element} className="insert insert--media">
+        <header className="insert__head">
+          <button type="button" className="insert__back" onClick={() => setFamille(null)}>
+            ‹ Retour
+          </button>
+          <span>{famille}</span>
+        </header>
+
+        <input
+          className="insert__filter"
+          placeholder="Filtrer…"
+          value={filter}
+          autoFocus
+          onChange={(event) => setFilter(event.target.value)}
+        />
+
+        <div className="insert__body">
+          {reserve === null && <p className="insert__empty">Lecture de la reserve…</p>}
+          {reserve !== null && proposes.length === 0 && (
+            <p className="insert__empty">
+              Rien de ce type dans <code>.MEDIAS</code>. Deposez-y vos fichiers.
+            </p>
+          )}
+          <div className="insert__files">
+            {proposes.map((file) => (
+              <button
+                key={file.path}
+                type="button"
+                className="insert__file"
+                title={file.path}
+                onClick={() => onMedia(file.path)}
+              >
+                {file.kind === "image" ? (
+                  <img src={api.fileUrl(file.path)} alt="" draggable={false} />
+                ) : (
+                  <span className="insert__file-icon">{ICONS[file.kind]}</span>
+                )}
+                <span>{file.path.split("/").pop()}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <footer className="insert__foot">
+          <button type="button" onClick={() => picker.current?.click()}>
+            Importer un fichier…
+          </button>
+          <input
+            ref={picker}
+            type="file"
+            hidden
+            onChange={async (event) => {
+              const file = event.target.files?.[0];
+              if (file) await onUpload(file);
+            }}
+          />
+        </footer>
+      </div>
+    );
+  }
+
+  // --- Catalogue ---
 
   return (
     <div ref={element} className="insert">
       <nav className="insert__tabs">
-        {(["blocs", "symboles", "images"] as Panel[]).map((name) => (
+        {(["blocs", "symboles"] as Panel[]).map((name) => (
           <button
             key={name}
             type="button"
             className={panel === name ? "is-active" : ""}
             onClick={() => setPanel(name)}
           >
-            {name}
+            {name === "blocs" ? "Blocs" : "Symboles"}
           </button>
         ))}
       </nav>
@@ -72,12 +153,13 @@ export function InsertMenu({ onInsert, onSymbol, onImage, onUpload, onClose }: P
                   <button
                     key={item.label}
                     type="button"
-                    onClick={() => {
-                      onInsert(item);
-                      onClose();
-                    }}
+                    className="insert__item"
+                    onClick={() => (item.media ? setFamille(item.media) : onInsert(item))}
                   >
-                    {item.label}
+                    <span className="insert__item-icon">{ICONS[item.icon]}</span>
+                    <span className="insert__item-label">{item.label}</span>
+                    {item.hint && <span className="insert__item-hint">{item.hint}</span>}
+                    {item.media && <span className="insert__item-hint">›</span>}
                   </button>
                 ))}
               </div>
@@ -102,60 +184,6 @@ export function InsertMenu({ onInsert, onSymbol, onImage, onUpload, onClose }: P
               </div>
             </div>
           ))}
-
-        {panel === "images" && (
-          <div className="insert__group">
-            <div className="insert__upload">
-              <button type="button" onClick={() => picker.current?.click()}>
-                Ajouter une image…
-              </button>
-              <input
-                ref={picker}
-                type="file"
-                accept="image/*"
-                multiple
-                hidden
-                onChange={async (event) => {
-                  const files = Array.from(event.target.files ?? []);
-                  event.target.value = "";
-                  for (const file of files) await onUpload(file);
-                  setAssets(null); // la liste doit etre refaite
-                }}
-              />
-            </div>
-
-            {assets === null ? (
-              <p className="insert__empty">Lecture du Vault…</p>
-            ) : assets.length === 0 ? (
-              <p className="insert__empty">Aucune image dans le Vault.</p>
-            ) : (
-              <>
-                <input
-                  className="insert__filter"
-                  placeholder="Filtrer…"
-                  value={filter}
-                  onChange={(event) => setFilter(event.target.value)}
-                />
-                <div className="insert__grid">
-                  {shown.map((path) => (
-                    <button
-                      key={path}
-                      type="button"
-                      title={path}
-                      onClick={() => {
-                        onImage(path);
-                        onClose();
-                      }}
-                    >
-                      <img src={api.assetUrl(path)} alt="" loading="lazy" />
-                      <span>{path.split("/").pop()}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

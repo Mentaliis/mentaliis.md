@@ -24,7 +24,14 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
-import { CheckboxWidget, ImageWidget, MathWidget, RuleWidget, TableWidget } from "./widgets";
+import {
+  CheckboxWidget,
+  EmbedWidget,
+  ImageWidget,
+  MathWidget,
+  RuleWidget,
+  TableWidget,
+} from "./widgets";
 
 const HIDE = Decoration.replace({});
 
@@ -67,20 +74,14 @@ function onLine(state: EditorState, from: number, to: number): boolean {
 }
 
 /**
- * Faut-il montrer le markdown brut de ce bloc ?
+ * Les marqueurs de bloc ne se montrent jamais.
  *
- * Poser le curseur sur la ligne devoile la syntaxe — `# Titre` reapparait, on
- * corrige, on repart. Mais pendant la frappe elle reste cachee : taper « # »
- * puis un texte donne un titre tout de suite, sans voir le diese.
+ * On ne voit pas `# Titre` mais un titre. Pour en changer le niveau, on tape
+ * simplement `##` devant : `normaliseTitres` remplace alors l'ancien marqueur,
+ * sans que le code apparaisse une seule fois.
  */
-function revealBlock(
-  state: EditorState,
-  typing: boolean,
-  reveal: boolean,
-  from: number,
-  to: number,
-): boolean {
-  return reveal && !typing && onLine(state, from, to);
+function revealBlock(): boolean {
+  return false;
 }
 
 // ---------------------------------------------------------------- Blocs
@@ -95,13 +96,12 @@ function buildBlocks(state: EditorState, reveal: boolean): DecorationSet {
   syntaxTree(state).iterate({
     enter: (node) => {
       if (node.name !== "Table") return undefined;
-      if (near(state, node.from, node.to, reveal)) return false;
       const source = state.sliceDoc(node.from, node.to);
       marks.push(
-        Decoration.replace({ widget: new TableWidget(source), block: true }).range(
-          node.from,
-          node.to,
-        ),
+        Decoration.replace({
+          widget: new TableWidget(source, node.from, node.to),
+          block: true,
+        }).range(node.from, node.to),
       );
       taken.push({ from: node.from, to: node.to });
       return false;
@@ -155,7 +155,6 @@ const INLINE_MATH = /\$([^$\n]+?)\$/g;
 
 function buildInline(
   view: EditorView,
-  typing: boolean,
   reveal: boolean,
   blockField: BlockField,
   hideLeadingTitle = false,
@@ -187,18 +186,17 @@ function buildInline(
         const name = node.name;
 
         // Le tableau est deja traite comme un bloc.
-        if (name === "Table") return near(state, node.from, node.to, reveal) ? undefined : false;
+        if (name === "Table") return false; // deja rendu comme bloc
 
         if (name === "HorizontalRule") {
           // Des le troisieme tiret tape, le trait apparait ; y reposer le
           // curseur ramene les « --- » pour pouvoir les effacer.
-          if (revealBlock(state, typing, reveal, node.from, node.to)) return false;
+          if (revealBlock()) return false;
           replace(node.from, node.to, Decoration.replace({ widget: new RuleWidget() }));
           return false;
         }
 
         if (name === "Image") {
-          if (near(state, node.from, node.to, reveal)) return false;
           const parsed = /^!\[([^\]]*)\]\(([^)]+)\)/.exec(state.sliceDoc(node.from, node.to));
           if (!parsed) return false;
           replace(
@@ -231,7 +229,6 @@ function buildInline(
         }
 
         if (name === "HeaderMark" || name === "QuoteMark") {
-          if (revealBlock(state, typing, reveal, node.from, node.to)) return false;
           // Le marqueur et l'espace qui le suit partent ensemble.
           const end = state.sliceDoc(node.to, node.to + 1) === " " ? node.to + 1 : node.to;
           replace(node.from, end, HIDE);
@@ -274,15 +271,12 @@ function buildInline(
         }
 
         if (MARK_NODES.has(name)) {
-          const parent = node.node.parent;
-          if (parent && !near(state, parent.from, parent.to, reveal)) {
-            replace(node.from, node.to, HIDE);
-          }
+          // Les etoiles du gras, les accents de l'italique : jamais visibles.
+          replace(node.from, node.to, HIDE);
           return false;
         }
 
         if (name === "Link") {
-          if (near(state, node.from, node.to, reveal)) return undefined;
           const parsed = /^\[([^\]]*)\]\(([^)]+)\)/.exec(state.sliceDoc(node.from, node.to));
           if (!parsed) return undefined;
           // Ne reste a l'ecran que le texte du lien.
@@ -321,8 +315,8 @@ function scanExtras(
   for (const match of text.matchAll(EMBED)) {
     const start = offset + match.index;
     const end = start + match[0].length;
-    if (!free(start, end) || near(state, start, end, reveal)) continue;
-    replace(start, end, Decoration.replace({ widget: new ImageWidget(match[1].trim(), "") }));
+    if (!free(start, end)) continue;
+    replace(start, end, Decoration.replace({ widget: new EmbedWidget(match[1].trim()) }));
   }
 
   // Liens vers d'autres notes.
@@ -335,10 +329,6 @@ function scanExtras(
     const target = inner.split("|")[0].split("#")[0].trim();
     const shown = inner.includes("|") ? inner.split("|")[1].trim() : inner.trim();
 
-    if (near(state, start, end, reveal)) {
-      marks.push(Decoration.mark({ class: "cm-wikilink is-raw" }).range(start, end));
-      continue;
-    }
     const label = start + 2 + inner.indexOf(shown);
     replace(start, label, HIDE);
     marks.push(
@@ -382,31 +372,25 @@ export function livePreview(
   const plugin = ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
-      /** Vrai tant que la derniere action etait une frappe, pas un deplacement. */
-      private typing = true;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view, this.typing, reveal, blockField, hideLeadingTitle);
+        this.decorations = buildInline(view, reveal, blockField, hideLeadingTitle);
       }
 
       update(update: ViewUpdate) {
-        // Ecrire cache la syntaxe ; deplacer le curseur la devoile. Taper modifie
-        // aussi la selection, d'ou l'ordre : le texte l'emporte.
-        if (update.docChanged) this.typing = true;
-        else if (update.selectionSet) this.typing = false;
-
         if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildInline(
-            update.view,
-            this.typing,
-            reveal,
-            blockField,
-            hideLeadingTitle,
-          );
+          this.decorations = buildInline(update.view, reveal, blockField, hideLeadingTitle);
         }
       }
     },
-    { decorations: (instance) => instance.decorations },
+    {
+      decorations: (instance) => instance.decorations,
+      // Ce qui est cache doit etre insecable : sans cela le curseur peut se
+      // poser AVANT un marqueur invisible, et la frappe suivante avale les
+      // lignes d'apres au lieu de s'inserer proprement.
+      provide: (plugin) =>
+        EditorView.atomicRanges.of((view) => view.plugin(plugin)?.decorations ?? Decoration.none),
+    },
   );
 
   const clicks = EditorView.domEventHandlers({

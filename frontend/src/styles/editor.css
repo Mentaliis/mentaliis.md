@@ -385,28 +385,57 @@ body:has(.rail__grip.is-dragging) * {
 .editor__plus {
   display: grid;
   place-content: center;
-  width: 30px;
-  height: 30px;
-  font-size: 19px;
+  width: 24px;
+  height: 24px;
+  font-size: 17px;
   line-height: 1;
-  color: var(--text-dim);
-  border: 1px solid var(--line);
+  color: var(--text-faint);
   border-radius: 1px;
+  opacity: 0.5;
   transition:
     color var(--fast) var(--ease),
-    border-color var(--fast) var(--ease),
+    background var(--fast) var(--ease),
+    opacity var(--fast) var(--ease),
     transform var(--fast) var(--ease);
 }
 
 .editor__plus:hover {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
 }
 
 .editor__plus.is-active {
   color: var(--accent);
-  border-color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
   transform: rotate(45deg);
+}
+
+/* La scene de l'ecriture : le texte, et la poignee qui le borde. */
+.editor__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+/* La poignee suit la ligne survolee : elle nait en fondu, sans jamais bousculer
+   le texte, puisqu'elle vit en dehors de la colonne. */
+.editor__handle {
+  position: absolute;
+  left: 50%;
+  z-index: 8;
+  display: flex;
+  align-items: flex-start;
+  margin-left: calc(-39ch - 62px);
+  animation: handle-in 120ms var(--ease);
+}
+
+@keyframes handle-in {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
 }
 
 .editor__surface {
@@ -1510,6 +1539,343 @@ body:has(.rail__grip.is-dragging) * {
 
 .media__link.is-danger:hover {
   color: var(--danger);
+}
+
+/* ---------------------------------------------- Tableau modifiable */
+
+.cm-table {
+  position: relative;
+  padding-right: 20px;
+  padding-bottom: 18px;
+  margin: 12px 0;
+  animation: fade var(--slow) var(--ease);
+}
+
+.cm-table th,
+.cm-table td {
+  outline: none;
+  transition: background var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
+}
+
+.cm-table th:hover,
+.cm-table td:hover {
+  background: rgba(140, 170, 220, 0.05);
+}
+
+/* La case en cours d'ecriture se signale sans deplacer le tableau. */
+.cm-table th:focus,
+.cm-table td:focus {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Les deux poignees : une bande sous le tableau, une colonne a sa droite. */
+.cm-table__row,
+.cm-table__col {
+  position: absolute;
+  display: grid;
+  place-content: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-faint);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  opacity: 0;
+  transition:
+    opacity var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.cm-table__row {
+  right: 20px;
+  bottom: 0;
+  left: 0;
+  height: 14px;
+}
+
+.cm-table__col {
+  top: 0;
+  right: 0;
+  bottom: 18px;
+  width: 14px;
+}
+
+.cm-table:hover .cm-table__row,
+.cm-table:hover .cm-table__col {
+  opacity: 1;
+}
+
+.cm-table__row:hover,
+.cm-table__col:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ------------------------------------------- Menu d'insertion */
+
+.insert__head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line);
+}
+
+.insert__back {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.insert__item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-dim);
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.insert__item:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.insert__item-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-faint);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+
+.insert__item:hover .insert__item-icon {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.insert__item-label {
+  flex: 1;
+}
+
+.insert__item-hint {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.insert__icon {
+  width: 16px;
+  height: 16px;
+}
+
+.insert__icon-letter {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  fill: currentColor;
+}
+
+.insert__icon-level {
+  font-family: var(--font-body);
+  font-size: 8px;
+  font-weight: 700;
+  fill: currentColor;
+}
+
+.insert__icon-tiny {
+  font-family: var(--font-body);
+  font-size: 6px;
+  fill: currentColor;
+}
+
+/* La reserve, quand on choisit un media. */
+.insert--media {
+  width: 300px;
+}
+
+.insert__files {
+  display: grid;
+  gap: 4px;
+}
+
+.insert__file {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--text-dim);
+  border-radius: 1px;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.insert__file:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.insert__file img,
+.insert__file-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 28px;
+  object-fit: cover;
+  color: var(--text-faint);
+  background: var(--bg);
+  border-radius: 1px;
+}
+
+.insert__foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.insert__foot button {
+  font-size: 12px;
+  color: var(--text-faint);
+  transition: color var(--fast) var(--ease);
+}
+
+.insert__foot button:hover {
+  color: var(--accent);
+}
+
+/* --------------------------------------------- Medias dans le texte */
+
+.cm-embed {
+  display: block;
+  margin: 10px 0;
+  animation: fade var(--slow) var(--ease);
+}
+
+.cm-embed video {
+  max-width: 100%;
+  max-height: 60vh;
+  background: #000;
+  border: 1px solid var(--line);
+  border-radius: 1px;
+}
+
+.cm-embed audio {
+  width: min(100%, 420px);
+}
+
+.cm-embed.is-missing {
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--danger);
+  border: 1px dashed var(--danger);
+  border-radius: 1px;
+}
+
+.cm-file {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  max-width: 100%;
+  padding: 9px 13px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-decoration: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 1px;
+  transition:
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.cm-file:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.cm-file__icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.cm-file__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.cm-file__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------- Vie des blocs */
+
+/* Ce que l'editeur dessine apparait plutot que de surgir. */
+.cm-image,
+.cm-math--block,
+.cm-rule {
+  animation: fade var(--slow) var(--ease);
+}
+
+.cm-image img {
+  transition: transform var(--slow) var(--ease), box-shadow var(--slow) var(--ease);
+}
+
+.cm-image img:hover {
+  transform: scale(1.01);
+  box-shadow: 0 16px 40px -20px rgba(0, 0, 0, 0.9);
+}
+
+.cm-task {
+  transition:
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+
+.cm-task:hover {
+  transform: scale(1.12);
+}
+
+.cm-task.is-checked::after {
+  animation: coche 160ms var(--ease);
+}
+
+@keyframes coche {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.cm-wikilink,
+.cm-link {
+  transition: filter var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.cm-wikilink:hover,
+.cm-link:hover {
+  filter: brightness(1.25);
 }
 
 /* ---------------------------------------------------------- Toast */

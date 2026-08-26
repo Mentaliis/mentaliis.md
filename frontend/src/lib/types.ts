@@ -109,6 +109,13 @@ export interface Constellation {
 /** Nom sous lequel la vue d'ensemble retient son propre cadrage. */
 export const CONSTELLATION_VIEW = "@constellation";
 
+/** Un fichier de la reserve, avec la famille dont il releve. */
+export interface MediaFile {
+  path: string;
+  /** image, video, audio ou fichier — c'est elle qui decide du rendu. */
+  kind: "image" | "video" | "audio" | "fichier";
+}
+
 /** La reserve de medias du Vault, au nom impose. */
 export interface MediaLibrary {
   /** Toujours `.MEDIAS`. */
@@ -116,6 +123,8 @@ export interface MediaLibrary {
   /** Faux tant que l'utilisateur ne l'a pas cree lui-meme. */
   exists: boolean;
   images: string[];
+  /** Tout ce qu'elle contient, images comprises, par famille. */
+  files: MediaFile[];
   /** Toujours `.MEDIAS/.SVG`. */
   icons_folder: string;
   icons_exist: boolean;

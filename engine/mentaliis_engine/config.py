@@ -27,6 +27,11 @@ ICONS_DIR = ".SVG"
 # Seuls formats acceptes pour une icone de porte.
 ICON_EXTENSIONS = {".svg", ".png", ".webp"}
 
+# Ce que la reserve sait presenter, par famille.
+VIDEO_EXTENSIONS = {".mp4", ".webm", ".ogv", ".mov", ".mkv"}
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".opus"}
+DOCUMENT_EXTENSIONS = {".pdf", ".txt", ".csv", ".json", ".zip", ".docx", ".xlsx", ".pptx"}
+
 # Dossiers ignores lors du parcours d'un Vault.
 IGNORED_DIRS = {".mentaliis", ".git", ".obsidian", "node_modules", "__pycache__", ".trash"}
 

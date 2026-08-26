@@ -11,12 +11,17 @@ export interface AttachedImage {
   caption: string;
 }
 
+/** Les apparences possibles d'un dossier dans l'environnement. */
+export type DoorIcon = "porte" | "cerveau";
+
 export interface Door {
   id: string;
   name: string;
   parent: string;
   position: Position;
   cover: string | null;
+  /** Porte a franchir, ou cerveau : deux facons de se representer un dossier. */
+  icon: DoorIcon;
   note_count: number;
   door_count: number;
 }

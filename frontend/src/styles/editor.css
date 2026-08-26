@@ -64,7 +64,7 @@
   font-size: 14px;
   line-height: 1;
   color: inherit;
-  border-radius: 4px;
+  border-radius: 1px;
   opacity: 0;
   transition: opacity var(--fast) var(--ease), background var(--fast) var(--ease);
 }
@@ -155,7 +155,7 @@ body:has(.rail__grip.is-dragging) * {
   height: 20px;
   font-size: 13px;
   color: var(--text-faint);
-  border-radius: 5px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -203,7 +203,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12.5px;
   text-align: left;
   color: var(--text-dim);
-  border-radius: 6px;
+  border-radius: 1px;
   text-overflow: ellipsis;
   white-space: nowrap;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
@@ -228,7 +228,7 @@ body:has(.rail__grip.is-dragging) * {
   height: 11px;
   background: linear-gradient(180deg, #2c4a85 0%, #16233d 100%);
   border: 1px solid var(--line-strong);
-  border-radius: 2px 2px 1px 1px;
+  border-radius: 1px;
 }
 
 .rail__label {
@@ -307,14 +307,14 @@ body:has(.rail__grip.is-dragging) * {
   gap: 2px;
   padding: 2px;
   background: var(--bg-raised);
-  border-radius: 9px;
+  border-radius: 1px;
 }
 
 .editor__modes button {
   padding: 5px 12px;
   font-size: 12px;
   color: var(--text-faint);
-  border-radius: 7px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -340,7 +340,7 @@ body:has(.rail__grip.is-dragging) * {
   line-height: 1;
   color: var(--text-dim);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 1px;
   transition:
     color var(--fast) var(--ease),
     border-color var(--fast) var(--ease),
@@ -409,7 +409,7 @@ body:has(.rail__grip.is-dragging) * {
   overflow: hidden;
   background: var(--bg-glass);
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: 1px;
   box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.9);
   backdrop-filter: blur(14px);
   animation: rise var(--fast) var(--ease);
@@ -468,7 +468,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12.5px;
   text-align: left;
   color: var(--text-dim);
-  border-radius: 6px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -489,7 +489,7 @@ body:has(.rail__grip.is-dragging) * {
   height: 34px;
   font-size: 17px;
   color: var(--text-dim);
-  border-radius: 6px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -504,7 +504,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12.5px;
   color: var(--accent);
   border: 1px dashed var(--line-strong);
-  border-radius: 8px;
+  border-radius: 1px;
   transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -520,7 +520,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12.5px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 1px;
   outline: none;
 }
 
@@ -537,7 +537,7 @@ body:has(.rail__grip.is-dragging) * {
 .insert__grid button {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 1px;
   transition: border-color var(--fast) var(--ease);
 }
 
@@ -646,8 +646,11 @@ body:has(.rail__grip.is-dragging) * {
    Apercu vivant : le markdown deja mis en forme, dans l'editeur lui-meme.
    ========================================================================== */
 
+/* Toute la mise en forme du markdown est exprimee en `em` : cette seule
+   valeur commande donc la taille de l'ecriture, et c'est elle que reglent les
+   trois niveaux d'agrandissement. */
 .cm-editor {
-  font-size: 15.5px;
+  font-size: calc(15.5px * var(--editor-scale, 1));
 }
 
 .cm-editor .cm-content {
@@ -723,7 +726,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 0.9em;
   color: #ffb3c7;
   background: var(--bg-raised);
-  border-radius: 4px;
+  border-radius: 1px;
 }
 
 .cm-link {
@@ -737,7 +740,7 @@ body:has(.rail__grip.is-dragging) * {
   color: var(--accent);
   cursor: pointer;
   background: var(--accent-soft);
-  border-radius: 4px;
+  border-radius: 1px;
 }
 
 .cm-wikilink:hover {
@@ -794,7 +797,7 @@ body:has(.rail__grip.is-dragging) * {
   cursor: pointer;
   background: var(--bg-raised);
   border: 1.5px solid var(--line-strong);
-  border-radius: 4px;
+  border-radius: 1px;
   transition:
     background var(--fast) var(--ease),
     border-color var(--fast) var(--ease);
@@ -841,7 +844,7 @@ body:has(.rail__grip.is-dragging) * {
   max-width: 100%;
   max-height: 60vh;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 1px;
 }
 
 .cm-image__caption {
@@ -857,7 +860,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12px;
   color: var(--danger);
   background: rgba(255, 107, 107, 0.1);
-  border-radius: 6px;
+  border-radius: 1px;
 }
 
 /* --- Tableaux --- */
@@ -934,7 +937,7 @@ body:has(.rail__grip.is-dragging) * {
   padding: 22px 24px 18px;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
+  border-radius: 1px;
   box-shadow: 0 34px 80px -30px rgba(0, 0, 0, 0.95);
   animation: dialog-in var(--slow) var(--ease);
 }
@@ -967,7 +970,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 14px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 1px;
   outline: none;
   transition: border-color var(--fast) var(--ease), box-shadow var(--fast) var(--ease);
 }
@@ -989,7 +992,7 @@ body:has(.rail__grip.is-dragging) * {
   padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
-  border-radius: 9px;
+  border-radius: 1px;
   transition:
     color var(--fast) var(--ease),
     background var(--fast) var(--ease),
@@ -1055,7 +1058,7 @@ body:has(.rail__grip.is-dragging) * {
   overflow: hidden;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-lg);
+  border-radius: 1px;
   box-shadow: 0 36px 90px -34px rgba(0, 0, 0, 0.95);
   animation: dialog-in var(--slow) var(--ease);
 }
@@ -1080,7 +1083,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 20px;
   line-height: 1;
   color: var(--text-faint);
-  border-radius: 8px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -1132,7 +1135,7 @@ body:has(.rail__grip.is-dragging) * {
   padding: 14px 12px;
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: 1px;
   transition:
     border-color var(--fast) var(--ease),
     background var(--fast) var(--ease);
@@ -1170,7 +1173,7 @@ body:has(.rail__grip.is-dragging) * {
   height: 4px;
   appearance: none;
   background: var(--line-strong);
-  border-radius: 2px;
+  border-radius: 1px;
   outline: none;
 }
 
@@ -1180,7 +1183,7 @@ body:has(.rail__grip.is-dragging) * {
   appearance: none;
   cursor: grab;
   background: var(--accent);
-  border-radius: 50%;
+  border-radius: 1px;
 }
 
 .settings__slider input[type="range"]::-webkit-slider-thumb:active {
@@ -1216,7 +1219,7 @@ body:has(.rail__grip.is-dragging) * {
   font-size: 12.5px;
   color: var(--text-dim);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 1px;
   transition: color var(--fast) var(--ease), border-color var(--fast) var(--ease);
 }
 
@@ -1238,7 +1241,7 @@ body:has(.rail__grip.is-dragging) * {
   cursor: pointer;
   background: var(--bg-glass);
   border: 1px solid rgba(255, 107, 107, 0.35);
-  border-radius: 10px;
+  border-radius: 1px;
   transform: translateX(-50%);
   animation: rise var(--fast) var(--ease);
 }
@@ -1254,7 +1257,7 @@ body:has(.rail__grip.is-dragging) * {
   background: rgba(140, 170, 220, 0.16);
   background-clip: padding-box;
   border: 3px solid transparent;
-  border-radius: 6px;
+  border-radius: 1px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

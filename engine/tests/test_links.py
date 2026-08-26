@@ -232,3 +232,41 @@ def test_le_dossier_parent_compte_aussi_comme_ecriture_interne(vault):
 def test_un_dossier_non_touche_reste_externe(vault):
     vault.write_note("Vision/Cap 2030.md", "Revise.\n")
     assert not vault.wrote_recently(vault.root / "Projets")
+
+
+# --- Apparence des portes ---
+
+
+def test_une_porte_est_une_porte_par_defaut(vault):
+    assert vault.scene("").doors[0].icon == "porte"
+
+
+def test_on_peut_changer_une_porte_en_cerveau(vault):
+    porte = vault.set_icon("Projets", "cerveau")
+    assert porte.icon == "cerveau"
+    assert next(d for d in vault.scene("").doors if d.id == "Projets").icon == "cerveau"
+
+
+def test_l_apparence_survit_a_une_reouverture(tmp_path, vault):
+    vault.set_icon("Projets", "cerveau")
+    from mentaliis_engine.vault import Vault as Rouvert
+
+    doors = Rouvert(tmp_path).scene("").doors
+    assert next(d for d in doors if d.id == "Projets").icon == "cerveau"
+
+
+def test_revenir_a_la_porte_n_ecrit_rien_dans_le_layout(vault):
+    vault.set_icon("Projets", "cerveau")
+    vault.set_icon("Projets", "porte")
+    assert "icon" not in vault.layout.get("Projets")
+
+
+def test_une_apparence_inconnue_est_refusee(vault):
+    with pytest.raises(Exception):
+        vault.set_icon("Projets", "pyramide")
+
+
+def test_l_apparence_suit_un_renommage(vault):
+    vault.set_icon("Projets", "cerveau")
+    vault.rename("Projets", "Chantiers")
+    assert next(d for d in vault.scene("").doors if d.id == "Chantiers").icon == "cerveau"

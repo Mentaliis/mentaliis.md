@@ -27,6 +27,7 @@ from ..models import (
     SceneResponse,
     SetCameraRequest,
     SetCoverRequest,
+    SetIconRequest,
     SetImagesRequest,
     Settings,
     VaultInfo,
@@ -179,6 +180,12 @@ def post_door(payload: CreateDoorRequest):
 @router.put("/door/cover", response_model=Door)
 def put_door_cover(payload: SetCoverRequest, id: str = Query(...)):
     return _guard(_vault().set_cover, id, payload.cover)
+
+
+@router.put("/door/icon", response_model=Door)
+def put_door_icon(payload: SetIconRequest, id: str = Query(...)):
+    """Porte ou cerveau : deux facons de se representer un dossier."""
+    return _guard(_vault().set_icon, id, payload.icon)
 
 
 # --- Operations communes ---

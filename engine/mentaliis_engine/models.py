@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -20,6 +22,10 @@ class AttachedImage(BaseModel):
     caption: str = ""
 
 
+#: Les apparences possibles d'un dossier dans l'environnement.
+DoorIcon = Literal["porte", "cerveau"]
+
+
 class Door(BaseModel):
     """Un dossier du Vault, represente comme une porte dans l'environnement."""
 
@@ -28,6 +34,8 @@ class Door(BaseModel):
     parent: str  # chemin relatif du dossier parent ("" pour la racine)
     position: Position = Field(default_factory=Position)
     cover: str | None = None  # image de couverture, chemin relatif au Vault
+    #: Porte a franchir, ou cerveau : deux facons de se representer un dossier.
+    icon: DoorIcon = "porte"
     note_count: int = 0
     door_count: int = 0
 
@@ -147,6 +155,12 @@ class MoveRequest(BaseModel):
 
 class RenameRequest(BaseModel):
     name: str
+
+
+class SetIconRequest(BaseModel):
+    """Apparence a donner a une porte."""
+
+    icon: DoorIcon
 
 
 class SetCoverRequest(BaseModel):

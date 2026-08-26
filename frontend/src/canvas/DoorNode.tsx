@@ -1,5 +1,6 @@
 /** Une porte : un dossier du Vault, avec son image de vision au-dessus. */
 
+import { BrainIcon } from "./BrainIcon";
 import { api } from "../lib/api";
 import type { Door, Position } from "../lib/types";
 import { useDraggable } from "./useDraggable";
@@ -46,7 +47,7 @@ export function DoorNode({
 
   return (
     <div
-      className={`node door${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
+      className={`node door door--${door.icon}${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
       style={{ transform: `translate(${door.position.x}px, ${door.position.y}px)` }}
       onContextMenu={onContextMenu}
       onDoubleClick={onEnter}
@@ -61,10 +62,14 @@ export function DoorNode({
         )}
       </div>
 
-      <div className="door__frame">
-        <div className="door__panel" />
-        <div className="door__handle" />
-      </div>
+      {door.icon === "cerveau" ? (
+        <BrainIcon id={door.id} />
+      ) : (
+        <div className="door__frame">
+          <div className="door__panel" />
+          <div className="door__handle" />
+        </div>
+      )}
 
       <div className="node__label">
         <span className="node__title">{door.name}</span>

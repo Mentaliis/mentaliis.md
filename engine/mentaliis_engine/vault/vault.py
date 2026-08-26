@@ -190,6 +190,7 @@ class Vault:
             parent=parent,
             position=Position(x=stored.get("x", 0.0), y=stored.get("y", 0.0)),
             cover=stored.get("cover"),
+            icon=stored.get("icon") if stored.get("icon") in ("porte", "cerveau") else "porte",
             note_count=note_count,
             door_count=door_count,
         )
@@ -367,6 +368,18 @@ class Vault:
         if cover:
             self.resolve(cover)  # la couverture doit vivre dans le Vault
         self.layout.set_field(door_id, "cover", cover)
+        parent = Path(door_id).parent.as_posix().strip(".")
+        return self._door(folder, parent=parent)
+
+    def set_icon(self, door_id: str, icon: str) -> Door:
+        """Change l'apparence d'une porte sans toucher au dossier lui-meme."""
+        folder = self.resolve(door_id)
+        if not folder.is_dir():
+            raise VaultError(f"Cette porte n'existe pas : {door_id}")
+        if icon not in ("porte", "cerveau"):
+            raise VaultError(f"Apparence inconnue : {icon}")
+        # "porte" etant la valeur par defaut, on ne l'ecrit pas.
+        self.layout.set_field(door_id, "icon", None if icon == "porte" else icon)
         parent = Path(door_id).parent.as_posix().strip(".")
         return self._door(folder, parent=parent)
 

@@ -218,6 +218,15 @@ export default function App() {
     };
   }, []);
 
+  // Le clic droit appartient a l'application : jamais de menu du navigateur,
+  // qui donnerait acces a l'inspecteur et trahirait qu'on est dans une page web.
+  // Les elements qui ont leur propre menu arretent l'evenement avant d'arriver ici.
+  useEffect(() => {
+    const swallow = (event: MouseEvent) => event.preventDefault();
+    window.addEventListener("contextmenu", swallow);
+    return () => window.removeEventListener("contextmenu", swallow);
+  }, []);
+
   const enterDoor = useCallback((target: string) => {
     setPath(target);
     setView("scene");

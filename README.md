@@ -117,7 +117,8 @@ npm run build
 Ce qui fonctionne :
 
 - **Vault** : ouverture d'un dossier racine, memorise et rouvert au lancement suivant.
-- **Portes** : chaque dossier est une porte, avec son image de vision au-dessus.
+- **Portes** : chaque dossier est une porte — ou un cerveau, au choix par clic droit —
+  avec son image de vision au-dessus.
   Le nom du lieu ou l'on se trouve est rappele en capitales, tout en haut, au centre.
 - **Notes** : chaque `.md` est une carte, avec titre, extrait, tags et images accrochees.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
@@ -127,8 +128,8 @@ Ce qui fonctionne :
   Le fichier sur le disque, lui, reste du markdown parfaitement ordinaire.
 - **Deux modes** : *ecriture* (par defaut) et *lecture*, qui verrouille le texte
   et n'affiche plus aucune syntaxe — la note y est purement consultative.
-- **Parametres** : agrandissement de toute l'interface (1×, 2×, 3×) et largeur
-  de la bande de gauche, qui se regle aussi en tirant son bord.
+- **Parametres** : taille de l'ecriture (1×, 2×, 3×), qui n'agit que sur la zone
+  d'edition, et largeur de la bande de gauche, reglable aussi en tirant son bord.
 - **Blocs** : titres, listes, cases a cocher, tableaux, citations, code,
   separateurs, images, et **formules mathematiques** composees par KaTeX.
 - **Bouton « + »** : inserer un bloc, un symbole mathematique (∀ ∈ ∑ ∫ π ℝ…)

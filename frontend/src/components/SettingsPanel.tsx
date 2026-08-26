@@ -5,8 +5,8 @@ import type { Settings, VaultInfo } from "../lib/types";
 
 const AGRANDISSEMENTS: { valeur: 1 | 2 | 3; nom: string; detail: string }[] = [
   { valeur: 1, nom: "1×", detail: "Taille normale" },
-  { valeur: 2, nom: "2×", detail: "Deux fois plus grand" },
-  { valeur: 3, nom: "3×", detail: "Trois fois plus grand" },
+  { valeur: 2, nom: "2×", detail: "Un cran plus grand" },
+  { valeur: 3, nom: "3×", detail: "Encore un cran" },
 ];
 
 interface Props {
@@ -45,9 +45,10 @@ export function SettingsPanel({ settings, vault, onChange, onChangeVault, onClos
 
         <div className="settings__body">
           <section className="settings__section">
-            <h2>Agrandissement</h2>
+            <h2>Taille de l'ecriture</h2>
             <p className="settings__hint">
-              Met toute l'interface a l'echelle, texte et elements compris.
+              N'agit que sur la zone d'edition des notes, pas sur le reste de
+              l'application.
             </p>
             <div className="settings__choices">
               {AGRANDISSEMENTS.map((choix) => (

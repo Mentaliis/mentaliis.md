@@ -10,6 +10,7 @@ import type {
   Camera,
   Constellation,
   Door,
+  DoorIcon,
   Note,
   NoteLinks,
   NoteSummary,
@@ -94,6 +95,11 @@ export const api = {
   // --- Portes ---
   createDoor: (parent: string, name: string) =>
     request<Door>("/door", { method: "POST", ...body({ parent, name }) }),
+  setIcon: (id: string, icon: DoorIcon) =>
+    request<Door>(`/door/icon?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      ...body({ icon }),
+    }),
   setCover: (id: string, cover: string | null) =>
     request<Door>(`/door/cover?id=${encodeURIComponent(id)}`, { method: "PUT", ...body({ cover }) }),
 

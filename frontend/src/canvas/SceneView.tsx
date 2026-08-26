@@ -87,13 +87,14 @@ export function SceneView({
     [],
   );
 
+  /** Menu d'une porte ou d'une note. `door` vaut null pour une note. */
   const itemMenu = useCallback(
-    (id: string, name: string, hasCover: boolean | null): MenuItem[] => [
+    (id: string, name: string, door: Door | null): MenuItem[] => [
       {
         label: "Renommer",
         action: async () => {
           const next = await dialog.prompt({
-            title: hasCover === null ? "Renommer la note" : "Renommer la porte",
+            title: door ? "Renommer la porte" : "Renommer la note",
             value: name,
             confirmLabel: "Renommer",
           });
@@ -103,9 +104,34 @@ export function SceneView({
           }
         },
       },
+      ...(door
+        ? [
+            {
+              label: "Changer d'icone",
+              submenu: [
+                {
+                  label: "Porte",
+                  checked: door.icon === "porte",
+                  action: async () => {
+                    await api.setIcon(id, "porte");
+                    onSceneChanged();
+                  },
+                },
+                {
+                  label: "Cerveau",
+                  checked: door.icon === "cerveau",
+                  action: async () => {
+                    await api.setIcon(id, "cerveau");
+                    onSceneChanged();
+                  },
+                },
+              ],
+            },
+          ]
+        : []),
       // L'image de vision se pose en la lachant sur la porte : ne reste ici
       // que le moyen de la retirer.
-      ...(hasCover
+      ...(door?.cover
         ? [
             {
               label: "Retirer l'image de vision",
@@ -204,7 +230,7 @@ export function SceneView({
               onChanged={onSceneChanged}
               onError={onError}
               onContextMenu={(event) =>
-                openMenu(event, itemMenu(door.id, door.name, Boolean(door.cover)))
+                openMenu(event, itemMenu(door.id, door.name, door))
               }
             />
           ))}

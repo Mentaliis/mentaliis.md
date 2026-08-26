@@ -231,3 +231,36 @@ def test_un_layout_ecrit_a_la_main_ne_casse_rien(vault):
     # Une valeur bricolee hors de la reserve retombe sur la porte.
     vault.layout.set_field("Projets", "icon", "/etc/passwd")
     assert next(d for d in vault.scene("").doors if d.id == "Projets").icon == "porte"
+
+
+# --- Nommage des nouvelles notes ---
+
+
+def test_une_deuxieme_note_du_meme_nom_prend_un_numero(vault):
+    premiere = vault.create_note("Projets", "Nouvelle Note")
+    deuxieme = vault.create_note("Projets", "Nouvelle Note")
+    troisieme = vault.create_note("Projets", "Nouvelle Note")
+    assert premiere.id == "Projets/Nouvelle Note.md"
+    assert deuxieme.id == "Projets/Nouvelle Note (1).md"
+    assert troisieme.id == "Projets/Nouvelle Note (2).md"
+    # Le titre affiche doit suivre, sinon les trois se ressemblent a l'ecran.
+    assert [premiere.title, deuxieme.title, troisieme.title] == [
+        "Nouvelle Note",
+        "Nouvelle Note (1)",
+        "Nouvelle Note (2)",
+    ]
+
+
+def test_renommer_la_premiere_libere_son_nom(vault):
+    vault.create_note("Projets", "Nouvelle Note")
+    vault.retitle("Projets/Nouvelle Note.md", "Un vrai titre")
+    reprise = vault.create_note("Projets", "Nouvelle Note")
+    assert reprise.id == "Projets/Nouvelle Note.md"
+
+
+def test_retitrer_vers_un_nom_pris_ne_recouvre_rien(vault):
+    vault.create_note("Projets", "Alpha")
+    vault.create_note("Projets", "Beta")
+    renommee = vault.retitle("Projets/Beta.md", "Alpha")
+    assert renommee.id == "Projets/Alpha (1).md"
+    assert (vault.root / "Projets" / "Alpha.md").exists()

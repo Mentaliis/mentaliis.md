@@ -139,7 +139,10 @@ Ce qui fonctionne :
   et n'affiche plus aucune syntaxe — la note y est purement consultative.
 - **Titre d'une note** : affiche une seule fois, en grand, et fige. Il ne change
   que par le crayon qui apparait au survol — jamais par megarde. Le renommer met
-  d'accord le frontmatter, le `# titre` du texte et le nom du fichier.
+  d'accord le frontmatter, le `# titre` du texte et le nom du fichier, et tout
+  l'ecran suit aussitot : onglet, bande de gauche, fil d'Ariane, carte de la scene.
+- **Bouton « + »** au bout des onglets : une note neuve d'un clic, nommee
+  « Nouvelle Note », puis « Nouvelle Note (1) », et ainsi de suite.
 - **Parametres** : taille de l'ecriture (1×, 2×, 3×), qui n'agit que sur la zone
   d'edition, et largeur de la bande de gauche, reglable aussi en tirant son bord.
 - **Blocs** : titres, listes, cases a cocher, tableaux, citations, code,
@@ -153,7 +156,7 @@ Ce qui fonctionne :
 - **Images** : rangees ou l'on veut dans le Vault, citees par leur seul nom
   (`![[schema.png]]`) — le moteur les retrouve dans n'importe quel sous-dossier.
 - **Glisser-deposer** d'images : sur une porte pour sa vision, sur une note pour
-  l'illustrer, ou directement dans le texte.
+  l'illustrer, ou directement dans le texte. Tout atterrit dans `.MEDIAS`.
 - **Surveillance du disque** : une note modifiee dans un autre editeur apparait ici aussitot.
 - **Recherche** plein texte (Ctrl+K), **corbeille** dans `.mentaliis/trash/`.
 

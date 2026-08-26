@@ -17,6 +17,8 @@ interface Props {
   onEnterDoor: (path: string) => void;
   onOpenNote: (id: string) => void;
   onSceneChanged: () => void;
+  /** Un element renomme : les onglets ouverts dessus doivent suivre. */
+  onRenamed: (oldId: string, newId: string, title?: string) => void;
   onError: (message: string) => void;
 }
 
@@ -32,13 +34,19 @@ export function SceneView({
   onEnterDoor,
   onOpenNote,
   onSceneChanged,
+  onRenamed,
   onError,
 }: Props) {
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
   const [menu, setMenu] = useState<Menu | null>(null);
   /** Porte dont on choisit la vision ou l'apparence, et lequel des deux. */
-  const [picking, setPicking] = useState<{ door: Door; kind: MediaKind } | null>(null);
+  const [picking, setPicking] = useState<{
+    kind: MediaKind;
+    id: string;
+    subject: string;
+    current: string | null;
+  } | null>(null);
   const [links, setLinks] = useState<SceneLink[]>(scene.links);
   /** Trait en cours de trace, tant qu'on n'a pas relache. */
   const [pending, setPending] = useState<{ from: string; to: Position } | null>(null);
@@ -205,9 +213,20 @@ export function SceneView({
             value: name,
             confirmLabel: "Renommer",
           });
-          if (next && next !== name) {
-            await api.rename(id, next);
+          if (!next || next === name) return;
+          try {
+            if (door) {
+              // Un dossier n'a que son nom : rien a mettre d'accord a l'interieur.
+              const { id: nouveau } = await api.rename(id, next);
+              onRenamed(id, nouveau);
+            } else {
+              // Une note porte son titre a trois endroits : le moteur les aligne.
+              const renommee = await api.retitle(id, next);
+              onRenamed(id, renommee.id, renommee.title);
+            }
             onSceneChanged();
+          } catch (problem) {
+            onError((problem as Error).message);
           }
         },
       },
@@ -215,14 +234,24 @@ export function SceneView({
         ? [
             {
               label: "Changer d'icone",
-              action: () => setPicking({ door, kind: "icone" as MediaKind }),
+              action: () =>
+                setPicking({ kind: "icone", id, subject: name, current: door.icon }),
             },
             {
               label: door.cover ? "Changer l'image de vision" : "Choisir une image de vision",
-              action: () => setPicking({ door, kind: "vision" as MediaKind }),
+              action: () =>
+                setPicking({ kind: "vision", id, subject: name, current: door.cover }),
             },
           ]
         : []),
+      ...(door
+        ? []
+        : [
+            {
+              label: "Ajouter une image",
+              action: () => setPicking({ kind: "note", id, subject: name, current: null }),
+            },
+          ]),
       {
         label: "Supprimer",
         danger: true,
@@ -377,23 +406,25 @@ export function SceneView({
       {picking && (
         <MediaPicker
           kind={picking.kind}
-          door={picking.door}
+          subject={picking.subject}
+          current={picking.current}
           onClose={() => setPicking(null)}
-          onPickVision={async (path) => {
-            const porte = picking.door;
+          onPick={async (valeur) => {
+            const choix = picking;
             setPicking(null);
             try {
-              await api.setCover(porte.id, path);
-              onSceneChanged();
-            } catch (problem) {
-              onError((problem as Error).message);
-            }
-          }}
-          onPickIcon={async (icon) => {
-            const porte = picking.door;
-            setPicking(null);
-            try {
-              await api.setIcon(porte.id, icon);
+              if (choix.kind === "icone") {
+                await api.setIcon(choix.id, valeur ?? "porte");
+              } else if (choix.kind === "vision") {
+                await api.setCover(choix.id, valeur);
+              } else if (valeur) {
+                // Une image de note s'ajoute a celles deja accrochees.
+                const note = notes.find((item) => item.id === choix.id);
+                await api.setImages(choix.id, [
+                  ...(note?.images ?? []),
+                  { path: valeur, caption: "", position: { x: 130, y: -80 } },
+                ]);
+              }
               onSceneChanged();
             } catch (problem) {
               onError((problem as Error).message);

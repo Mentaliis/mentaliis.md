@@ -12,9 +12,11 @@ interface Props {
   onClose: (id: string) => void;
   /** Referme toutes les notes et revient a l'environnement. */
   onCloseAll: () => void;
+  /** Cree une note dans la porte courante, sans rien demander. */
+  onCreate: () => void;
 }
 
-export function Tabs({ tabs, active, onSelect, onClose, onCloseAll }: Props) {
+export function Tabs({ tabs, active, onSelect, onClose, onCloseAll, onCreate }: Props) {
   if (!tabs.length) return null;
 
   return (
@@ -50,6 +52,17 @@ export function Tabs({ tabs, active, onSelect, onClose, onCloseAll }: Props) {
             </button>
           </div>
         ))}
+
+        {/* Discret jusqu'au survol : toujours la sans jamais s'imposer. */}
+        <button
+          type="button"
+          className="tabs__new"
+          title="Nouvelle note"
+          aria-label="Nouvelle note"
+          onClick={onCreate}
+        >
+          +
+        </button>
       </div>
 
       <button type="button" className="tabs__back" onClick={onCloseAll} title="Revenir aux portes">

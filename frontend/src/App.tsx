@@ -114,10 +114,29 @@ export default function App() {
     setActive(id);
   }, []);
 
-  /** Une note renommee garde sa place : son onglet change d'identite, sans doubler. */
-  const replaceNote = useCallback((oldId: string, next: OpenNote) => {
-    setTabs((current) => current.map((tab) => (tab.id === oldId ? next : tab)));
-    setActive((current) => (current === oldId ? next.id : current));
+  /**
+   * Un element renomme garde sa place. Renommer une porte deplace aussi tout ce
+   * qu'elle contient : les onglets ouverts sur ses notes doivent suivre, sinon
+   * ils pointeraient vers des fichiers qui n'existent plus.
+   */
+  const retarget = useCallback((oldId: string, newId: string, title?: string) => {
+    const suivi = (id: string) =>
+      id === oldId ? newId : id.startsWith(`${oldId}/`) ? newId + id.slice(oldId.length) : id;
+    setTabs((current) =>
+      current.map((tab) => {
+        const id = suivi(tab.id);
+        if (id === tab.id) return tab;
+        return { id, title: id === newId && title ? title : tab.title };
+      }),
+    );
+    setActive((current) => (current ? suivi(current) : current));
+  }, []);
+
+  /** Le titre lu dans le texte, repercute sans attendre l'enregistrement. */
+  const setNoteTitle = useCallback((id: string, title: string) => {
+    setTabs((current) =>
+      current.map((tab) => (tab.id === id && tab.title !== title ? { ...tab, title } : tab)),
+    );
   }, []);
 
   const closeNote = useCallback((id: string) => {
@@ -264,6 +283,17 @@ export default function App() {
     [enterDoor],
   );
 
+  /** Une note neuve, sans rien demander : on la nomme apres, si l'on veut. */
+  const quickNote = useCallback(async () => {
+    try {
+      const created = await api.createNote(path, "Nouvelle Note");
+      refresh();
+      openNote(created.id, created.title);
+    } catch (problem) {
+      setError((problem as Error).message);
+    }
+  }, [openNote, path, refresh]);
+
   const createNote = useCallback(async () => {
     const title = await dialog.prompt({
       title: "Nouvelle note",
@@ -339,6 +369,7 @@ export default function App() {
         onSelect={setActive}
         onClose={closeNote}
         onCloseAll={closeAll}
+        onCreate={quickNote}
       />
 
       <main className="app__body">
@@ -364,7 +395,8 @@ export default function App() {
               reloadToken={noteReload}
               onSaved={refresh}
               onOpenNote={openNote}
-              onRenamed={replaceNote}
+              onRenamed={retarget}
+              onTitle={setNoteTitle}
             />
           </>
         ) : view === "constellation" ? (
@@ -385,6 +417,7 @@ export default function App() {
             onEnterDoor={enterDoor}
             onOpenNote={openNote}
             onSceneChanged={refresh}
+            onRenamed={retarget}
             onError={setError}
           />
         ) : (

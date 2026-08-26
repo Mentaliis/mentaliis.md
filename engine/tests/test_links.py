@@ -166,17 +166,25 @@ def test_import_refuse_ce_qui_nest_pas_une_image(vault):
 def test_import_ne_remplace_jamais_un_fichier_existant(vault):
     first = vault.import_file("photo.png", b"a")
     second = vault.import_file("photo.png", b"b")
-    assert first != second
+    assert first == "Assets/photo.png"
+    assert second == "Assets/photo (1).png"
     assert (vault.root / first).read_bytes() == b"a"
 
 
 def test_images_accrochees_a_une_note(vault):
-    image = AttachedImage(path="Assets/photo.png", position=Position(x=90, y=-70), caption="cap")
-    vault.import_file("photo.png", b"a")
+    (vault.root / ".MEDIAS").mkdir()
+    depose = vault.import_file("photo.png", b"a", ".MEDIAS")
+    image = AttachedImage(path=depose, position=Position(x=90, y=-70), caption="cap")
     vault.set_images("orpheline.md", [image])
     note = next(item for item in vault.scene("").notes if item.id == "orpheline.md")
-    assert note.images[0].path == "Assets/photo.png"
+    assert note.images[0].path == ".MEDIAS/photo.png"
     assert note.images[0].position.x == 90
+
+
+def test_une_image_de_note_hors_de_la_reserve_est_refusee(vault):
+    (vault.root / "Projets" / "ailleurs.png").write_bytes(b"png")
+    with pytest.raises(Exception):
+        vault.set_images("orpheline.md", [AttachedImage(path="Projets/ailleurs.png")])
 
 
 def test_une_image_se_trouve_par_son_seul_nom(vault):

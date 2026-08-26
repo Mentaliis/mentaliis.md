@@ -342,9 +342,11 @@ class Vault:
         folder = self.resolve(parent)
         if not folder.is_dir():
             raise VaultError(f"Cette porte n'existe pas : {parent}")
-        file = folder / f"{_safe_name(title)}.md"
-        file = _unique(file)
-        md.write(file, f"# {title}\n\n")
+        file = _unique(folder / f"{_safe_name(title)}.md")
+        # Le titre ecrit dans le texte suit le nom finalement retenu : deux notes
+        # creees a la suite s'appellent « Nouvelle Note » puis « Nouvelle Note (1) »,
+        # a l'ecran comme sur le disque.
+        md.write(file, f"# {file.stem}\n\n")
         self._touch(file)
         self.links.invalidate()
         return self._note_summary(file, parent=parent)
@@ -381,6 +383,8 @@ class Vault:
             raise VaultError(f"Cette note n'existe pas : {note_id}")
         for image in images:
             self.resolve(image.path)  # chaque image doit vivre dans le Vault
+            if not image.path.startswith(MEDIAS_DIR + "/"):
+                raise VaultError(f"Une image doit venir de {MEDIAS_DIR}.")
         self.layout.set_field(
             note_id,
             "images",
@@ -702,15 +706,15 @@ def _safe_name(name: str) -> str:
 
 
 def _unique(path: Path) -> Path:
-    """Ajoute un suffixe numerique tant que le chemin est deja pris."""
+    """Ajoute « (1) », « (2) »... tant que le chemin est deja pris."""
     if not path.exists():
         return path
     stem, suffix = path.stem, path.suffix
-    for index in range(2, 1000):
-        candidate = path.with_name(f"{stem} {index}{suffix}")
+    for index in range(1, 1000):
+        candidate = path.with_name(f"{stem} ({index}){suffix}")
         if not candidate.exists():
             return candidate
-    return path.with_name(f"{stem} {int(time.time())}{suffix}")
+    return path.with_name(f"{stem} ({int(time.time())}){suffix}")
 
 
 def _icon_of(stored: dict) -> str:

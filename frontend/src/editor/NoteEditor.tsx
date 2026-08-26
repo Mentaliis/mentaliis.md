@@ -36,10 +36,19 @@ interface Props {
   onSaved: () => void;
   onOpenNote: (id: string) => void;
   /** Previent que la note a change d'identite, pour que son onglet suive. */
-  onRenamed: (oldId: string, next: { id: string; title: string }) => void;
+  onRenamed: (oldId: string, newId: string, title?: string) => void;
+  /** Titre lu dans le texte, a repercuter sans attendre l'enregistrement. */
+  onTitle: (id: string, title: string) => void;
 }
 
-export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote, onRenamed }: Props) {
+export function NoteEditor({
+  noteId,
+  reloadToken,
+  onSaved,
+  onOpenNote,
+  onRenamed,
+  onTitle,
+}: Props) {
   const [note, setNote] = useState<Note | null>(null);
   /** Titre lu dans le texte en cours : il change des qu'on modifie le premier titre. */
   const [liveTitle, setLiveTitle] = useState<string | null>(null);
@@ -121,15 +130,17 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote, onRenamed
   // reference plutot que dans les dependances evite de reconstruire l'editeur pour
   // rien : le reconstruire ramenait le curseur au debut du texte a chaque
   // enregistrement automatique.
-  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed });
-  latest.current = { onSaved, refreshLinks, followLink, onRenamed };
+  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed, onTitle });
+  latest.current = { onSaved, refreshLinks, followLink, onRenamed, onTitle };
 
   useEffect(() => {
     if (!loaded || !host.current) return;
 
     const save = (text: string) => {
       content.current = text;
-      setLiveTitle(headingOf(text));
+      const titre = headingOf(text);
+      setLiveTitle(titre);
+      if (titre) latest.current.onTitle(noteId, titre);
       setStatus("modifie");
       if (timer.current) window.clearTimeout(timer.current);
       timer.current = window.setTimeout(async () => {
@@ -172,15 +183,20 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote, onRenamed
       );
     }
 
+    // Une note neuve ne contient que sa ligne de titre : la lecture du fichier
+    // en retire les blancs de fin. Sans ligne en dessous, le curseur resterait
+    // sur le titre, qui se devoilerait au lieu de rester replie.
+    const premiere = content.current.split("\n", 1)[0];
+    const porteUnTitre = /^#\s/.test(premiere);
+    if (porteUnTitre && !content.current.includes("\n")) {
+      content.current = `${content.current}\n\n`;
+    }
+
     // On revient ou l'on etait : bascule ecriture/lecture ou relecture du disque
     // ne doivent pas faire perdre sa place dans le texte. Mais jamais sur la
-    // premiere ligne quand elle porte le titre : elle y est repliee.
-    const premiere = content.current.split("\n", 1)[0];
-    const plancher = /^#\s/.test(premiere) ? premiere.length + 1 : 0;
-    const anchor = Math.min(
-      Math.max(caret.current, plancher),
-      content.current.length,
-    );
+    // ligne du titre : elle y est repliee.
+    const plancher = porteUnTitre ? premiere.length + 1 : 0;
+    const anchor = Math.min(Math.max(caret.current, plancher), content.current.length);
 
     const editor = new EditorView({
       state: EditorState.create({ doc: content.current, extensions, selection: { anchor } }),
@@ -213,7 +229,7 @@ export function NoteEditor({ noteId, reloadToken, onSaved, onOpenNote, onRenamed
       // Le titre vit a trois endroits : le frontmatter, le `# titre` en tete, et
       // le nom du fichier. Le moteur les met d'accord d'un seul geste.
       const renommee = await api.retitle(note.id, voulu);
-      latest.current.onRenamed(note.id, { id: renommee.id, title: renommee.title });
+      latest.current.onRenamed(note.id, renommee.id, renommee.title);
       latest.current.onSaved();
     } catch (problem) {
       setError((problem as Error).message);

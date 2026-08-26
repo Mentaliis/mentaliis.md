@@ -43,11 +43,9 @@ export function DoorNode({
     single: true,
     onError,
     onFiles: async ([file]) => {
-      const { folder } = await api.media();
-      if (!folder) {
-        onError(
-          "Choisissez d'abord le dossier des medias : clic droit sur la porte, « Choisir une image de vision ».",
-        );
+      const { folder, exists } = await api.media();
+      if (!exists) {
+        onError(`Creez d'abord le dossier ${folder} a la racine du Vault.`);
         return;
       }
       await api.setCover(door.id, await api.importFile(file, folder));

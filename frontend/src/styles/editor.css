@@ -79,6 +79,30 @@
   opacity: 1;
 }
 
+/* Le « + » des onglets : presque efface, jusqu'a ce qu'on le cherche. */
+.tabs__new {
+  flex-shrink: 0;
+  align-self: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-faint);
+  border-radius: 1px;
+  opacity: 0.35;
+  transition:
+    opacity var(--fast) var(--ease),
+    color var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+.tabs__new:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
+}
+
 .tabs__back {
   flex-shrink: 0;
   padding: 0 14px;

@@ -74,8 +74,15 @@ export function NoteNode({
   // Deposer une image sur une note, c'est l'accrocher autour.
   const drop = useImageDrop({
     onError,
-    onDropped: async (paths, event) => {
+    // L'image est rangee dans la reserve, d'ou doit venir toute image du Vault.
+    onFiles: async (files, event) => {
+      const { folder, exists } = await api.media();
+      if (!exists) {
+        onError(`Creez d'abord le dossier ${folder} a la racine du Vault.`);
+        return;
+      }
       const origin = dropOffset(event, scale);
+      const paths = await Promise.all(files.map((file) => api.importFile(file, folder)));
       await persist([
         ...shown,
         ...paths.map((path, index) => ({

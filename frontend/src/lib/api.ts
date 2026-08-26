@@ -102,8 +102,6 @@ export const api = {
 
   // --- Dossier des medias ---
   media: () => request<MediaLibrary>("/media"),
-  setMediaFolder: (folder: string) =>
-    request<MediaLibrary>("/media", { method: "PUT", ...body({ folder }) }),
 
   // --- Traits entre elements ---
   link: (source: string, target: string) =>

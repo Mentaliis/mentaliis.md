@@ -13,7 +13,10 @@ import time
 from pathlib import Path
 
 from ..config import (
+    ICON_EXTENSIONS,
+    ICONS_DIR,
     IGNORED_DIRS,
+    MEDIAS_DIR,
     NOTE_EXTENSIONS,
     SETTINGS_FILE,
     VAULT_META_DIR,
@@ -24,6 +27,7 @@ from ..models import (
     Camera,
     Constellation,
     Door,
+    BUILTIN_ICONS,
     MediaLibrary,
     Note,
     NoteLinks,
@@ -169,42 +173,44 @@ class Vault:
             if source in present and target in present
         ]
 
-    # --- Dossier des medias ---
+    # --- Reserve de medias ---
 
-    def media_folder(self) -> str | None:
-        """Le dossier designe comme responsable des medias, s'il existe encore."""
-        stored = self.layout.get(CONFIG).get("media")
-        if not isinstance(stored, str):
-            return None
-        try:
-            return stored if self.resolve(stored).is_dir() else None
-        except VaultError:
-            return None
+    @property
+    def medias_dir(self) -> Path:
+        return self.root / MEDIAS_DIR
 
-    def set_media_folder(self, folder: str) -> str:
-        """Designe un dossier existant. On n'en cree jamais : il vient de l'utilisateur."""
-        cleaned = (folder or "").strip().strip("/")
-        if not cleaned:
-            raise VaultError("Aucun dossier indique.")
-        target = self.resolve(cleaned)
-        if not target.is_dir():
-            raise VaultError(f"Ce dossier n'existe pas dans le Vault : {cleaned}")
-        if target == self.root:
-            raise VaultError("Le Vault entier ne peut pas servir de dossier de medias.")
-        self.layout.set_field(CONFIG, "media", cleaned)
-        return cleaned
+    @property
+    def icons_dir(self) -> Path:
+        return self.medias_dir / ICONS_DIR
+
+    def _files_under(self, folder: Path, extensions: set[str]) -> list[str]:
+        """Fichiers d'un dossier de la reserve, chemins relatifs au Vault.
+
+        Le parcours ordinaire du Vault saute tout ce qui commence par un point :
+        la reserve doit donc etre lue a part, sinon elle serait invisible.
+        """
+        if not folder.is_dir():
+            return []
+        found: list[str] = []
+        for item in folder.rglob("*"):
+            if item.is_file() and item.suffix.lower() in extensions:
+                found.append(self.relative(item))
+        return sorted(found)
 
     def media(self) -> MediaLibrary:
-        """Ce que l'interface doit savoir pour proposer une image de vision."""
-        folder = self.media_folder()
-        images: list[str] = []
-        if folder:
-            prefix = folder + "/"
-            images = [path for path in self.list_assets() if path.startswith(prefix)]
+        """Ce que contient la reserve, et si elle existe seulement."""
         return MediaLibrary(
-            folder=folder,
-            images=images,
-            folders=[self.relative(item) for item in self._all_folders()],
+            folder=MEDIAS_DIR,
+            exists=self.medias_dir.is_dir(),
+            images=[
+                path
+                for path in self._files_under(self.medias_dir, IMAGE_EXTENSIONS)
+                # Les icones ont leur propre rayon : on ne les melange pas aux visions.
+                if not path.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/")
+            ],
+            icons_folder=f"{MEDIAS_DIR}/{ICONS_DIR}",
+            icons_exist=self.icons_dir.is_dir(),
+            icons=self._files_under(self.icons_dir, ICON_EXTENSIONS),
         )
 
     # --- Traits entre elements ---
@@ -260,7 +266,7 @@ class Vault:
             parent=parent,
             position=Position(x=stored.get("x", 0.0), y=stored.get("y", 0.0)),
             cover=stored.get("cover"),
-            icon=stored.get("icon") if stored.get("icon") in ("porte", "cerveau") else "porte",
+            icon=_icon_of(stored),
             note_count=note_count,
             door_count=door_count,
         )
@@ -464,11 +470,8 @@ class Vault:
             raise VaultError(f"Cette porte n'existe pas : {door_id}")
         if cover:
             self.resolve(cover)  # la couverture doit vivre dans le Vault
-            media = self.media_folder()
-            if media and not cover.startswith(media + "/"):
-                raise VaultError(
-                    f"Une image de vision doit venir du dossier des medias ({media})."
-                )
+            if not cover.startswith(MEDIAS_DIR + "/"):
+                raise VaultError(f"Une image de vision doit venir de {MEDIAS_DIR}.")
         self.layout.set_field(door_id, "cover", cover)
         parent = Path(door_id).parent.as_posix().strip(".")
         return self._door(folder, parent=parent)
@@ -478,12 +481,23 @@ class Vault:
         folder = self.resolve(door_id)
         if not folder.is_dir():
             raise VaultError(f"Cette porte n'existe pas : {door_id}")
-        if icon not in ("porte", "cerveau"):
-            raise VaultError(f"Apparence inconnue : {icon}")
+        if icon not in BUILTIN_ICONS:
+            self._check_icon(icon)
         # "porte" etant la valeur par defaut, on ne l'ecrit pas.
         self.layout.set_field(door_id, "icon", None if icon == "porte" else icon)
         parent = Path(door_id).parent.as_posix().strip(".")
         return self._door(folder, parent=parent)
+
+    def _check_icon(self, icon: str) -> None:
+        """Une icone doit venir de la reserve, et etre d'un format accepte."""
+        prefixe = f"{MEDIAS_DIR}/{ICONS_DIR}/"
+        if not icon.startswith(prefixe):
+            raise VaultError(f"Une icone doit etre rangee dans {prefixe.rstrip('/')}.")
+        if Path(icon).suffix.lower() not in ICON_EXTENSIONS:
+            acceptes = ", ".join(sorted(ext.lstrip(".") for ext in ICON_EXTENSIONS))
+            raise VaultError(f"Format d'icone non accepte. Formats permis : {acceptes}.")
+        if not self.resolve(icon).is_file():
+            raise VaultError(f"Cette icone n'existe pas : {icon}")
 
     def rename(self, item_id: str, new_name: str) -> str:
         source = self.resolve(item_id)
@@ -697,3 +711,13 @@ def _unique(path: Path) -> Path:
         if not candidate.exists():
             return candidate
     return path.with_name(f"{stem} {int(time.time())}{suffix}")
+
+
+def _icon_of(stored: dict) -> str:
+    """Apparence retenue pour une porte, en se mefiant d'un layout ecrit a la main."""
+    icon = stored.get("icon")
+    if not isinstance(icon, str) or not icon:
+        return "porte"
+    if icon in BUILTIN_ICONS:
+        return icon
+    return icon if icon.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/") else "porte"

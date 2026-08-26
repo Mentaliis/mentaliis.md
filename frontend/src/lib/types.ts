@@ -11,8 +11,14 @@ export interface AttachedImage {
   caption: string;
 }
 
-/** Les apparences possibles d'un dossier dans l'environnement. */
-export type DoorIcon = "porte" | "cerveau";
+/**
+ * Apparence d'un dossier : « porte », « cerveau », ou le chemin d'une icone
+ * rangee par l'utilisateur dans `.MEDIAS/.SVG`.
+ */
+export type DoorIcon = string;
+
+/** Les deux apparences fournies avec le logiciel. */
+export const BUILTIN_ICONS = ["porte", "cerveau"] as const;
 
 export interface Door {
   id: string;
@@ -103,13 +109,17 @@ export interface Constellation {
 /** Nom sous lequel la vue d'ensemble retient son propre cadrage. */
 export const CONSTELLATION_VIEW = "@constellation";
 
-/** Le dossier du Vault qui contient les medias, et ce qu'il contient. */
+/** La reserve de medias du Vault, au nom impose. */
 export interface MediaLibrary {
-  /** Chemin relatif du dossier choisi, ou null tant qu'aucun ne l'est. */
-  folder: string | null;
+  /** Toujours `.MEDIAS`. */
+  folder: string;
+  /** Faux tant que l'utilisateur ne l'a pas cree lui-meme. */
+  exists: boolean;
   images: string[];
-  /** Tous les dossiers du Vault, pour en choisir un quand rien n'est configure. */
-  folders: string[];
+  /** Toujours `.MEDIAS/.SVG`. */
+  icons_folder: string;
+  icons_exist: boolean;
+  icons: string[];
 }
 
 /** Preferences de l'utilisateur, communes a tous ses Vaults. */

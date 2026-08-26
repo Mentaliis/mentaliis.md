@@ -58,7 +58,7 @@ export function DoorNode({
   return (
     <div
       data-node-id={door.id}
-      className={`node door door--${door.icon}${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
+      className={`node door door--${door.icon === "cerveau" ? "cerveau" : door.icon === "porte" ? "porte" : "icone"}${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
       style={{ transform: `translate(${door.position.x}px, ${door.position.y}px)` }}
       onContextMenu={onContextMenu}
       onDoubleClick={onEnter}
@@ -83,10 +83,16 @@ export function DoorNode({
 
       {door.icon === "cerveau" ? (
         <BrainIcon id={door.id} />
-      ) : (
+      ) : door.icon === "porte" ? (
         <div className="door__frame">
           <div className="door__panel" />
           <div className="door__handle" />
+        </div>
+      ) : (
+        /* Une icone apportee par l'utilisateur : quelle que soit sa forme, elle
+           est encapsulee dans l'encombrement d'une porte, sans deformation. */
+        <div className="door__badge">
+          <img src={api.fileUrl(door.icon)} alt="" draggable={false} />
         </div>
       )}
 

@@ -1,29 +1,31 @@
 /**
- * Choisir l'image de vision d'une porte.
+ * Choisir l'image de vision d'une porte, ou l'icone qui la represente.
  *
- * Elle vient obligatoirement du Vault, et d'un dossier designe comme responsable
- * des medias. Tant qu'aucun ne l'est, on commence par en choisir un parmi ceux
- * qui existent deja : l'application n'en cree jamais a la place de l'utilisateur.
+ * Tout vient de la reserve du Vault, dont le nom est impose : `.MEDIAS` pour les
+ * images, `.MEDIAS/.SVG` pour les icones. L'application ne cree jamais ces
+ * dossiers — ils sont a l'utilisateur, qui les remplit comme il l'entend.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../lib/api";
-import type { MediaLibrary } from "../lib/types";
+import type { Door, MediaLibrary } from "../lib/types";
+
+/** Ce que la fenetre propose : une vision, ou une apparence. */
+export type MediaKind = "vision" | "icone";
 
 interface Props {
-  /** Nom de la porte, rappele dans le titre. */
-  doorName: string;
-  /** Image actuellement posee, pour la marquer comme choisie. */
-  current: string | null;
-  onPick: (path: string | null) => void;
+  kind: MediaKind;
+  door: Door;
+  onPickVision: (path: string | null) => void;
+  onPickIcon: (icon: string) => void;
   onClose: () => void;
 }
 
-export function MediaPicker({ doorName, current, onPick, onClose }: Props) {
+const FORMATS = "svg, png, webp";
+
+export function MediaPicker({ kind, door, onPickVision, onPickIcon, onClose }: Props) {
   const [media, setMedia] = useState<MediaLibrary | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /** Vrai quand on veut changer de dossier alors qu'il en existe deja un. */
-  const [choosing, setChoosing] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -45,31 +47,23 @@ export function MediaPicker({ doorName, current, onPick, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose]);
 
-  const designer = async (folder: string) => {
-    try {
-      setMedia(await api.setMediaFolder(folder));
-      setChoosing(false);
-      setError(null);
-    } catch (problem) {
-      setError((problem as Error).message);
-    }
-  };
-
-  const enChoix = media !== null && (choosing || !media.folder);
+  const vision = kind === "vision";
+  const dossier = vision ? media?.folder : media?.icons_folder;
+  const present = vision ? media?.exists : media?.icons_exist;
+  const items = (vision ? media?.images : media?.icons) ?? [];
 
   return (
     <div
       className="media__veil"
       onPointerDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <div className="media" role="dialog" aria-modal="true" aria-label="Image de vision">
+      <div className="media" role="dialog" aria-modal="true" aria-label={vision ? "Image de vision" : "Icone de la porte"}>
         <header className="media__head">
           <div>
-            <h2>Image de vision</h2>
+            <h2>{vision ? "Image de vision" : "Icone de la porte"}</h2>
             <p className="media__hint">
-              {enChoix
-                ? "Choisissez le dossier du Vault qui contient vos medias."
-                : `Pour la porte « ${doorName} ». Les images viennent de ${media?.folder}.`}
+              Pour « {door.name} ». {vision ? "Les images" : `Les icones (${FORMATS})`} sont lues
+              dans <code>{dossier}</code>.
             </p>
           </div>
           <button type="button" className="media__close" onClick={onClose} title="Fermer">
@@ -79,69 +73,114 @@ export function MediaPicker({ doorName, current, onPick, onClose }: Props) {
 
         <div className="media__body">
           {error && <p className="media__error">{error}</p>}
-
           {media === null && !error && <p className="media__empty">Lecture du Vault…</p>}
 
-          {enChoix && media && (
-            <>
-              {media.folders.length === 0 ? (
-                <p className="media__empty">
-                  Ce Vault ne contient encore aucun dossier. Creez-en un, puis revenez.
-                </p>
-              ) : (
-                <ul className="media__folders">
-                  {media.folders.map((folder) => (
-                    <li key={folder}>
-                      <button type="button" onClick={() => void designer(folder)}>
-                        {folder}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+          {/* Les deux apparences fournies sont toujours proposees : elles ne
+              dependent d'aucun dossier. */}
+          {media && !vision && (
+            <div className="media__grid media__grid--icons">
+              <BuiltIn
+                label="Porte"
+                active={door.icon === "porte"}
+                onPick={() => onPickIcon("porte")}
+              >
+                <span className="media__door" />
+              </BuiltIn>
+              <BuiltIn
+                label="Cerveau"
+                active={door.icon === "cerveau"}
+                onPick={() => onPickIcon("cerveau")}
+              >
+                <span className="media__brain">🧠</span>
+              </BuiltIn>
+
+              {items.map((path) => (
+                <button
+                  key={path}
+                  type="button"
+                  className={`media__item${door.icon === path ? " is-current" : ""}`}
+                  title={path}
+                  onClick={() => onPickIcon(path)}
+                >
+                  <img src={api.fileUrl(path)} alt="" draggable={false} />
+                  <span>{path.split("/").pop()}</span>
+                </button>
+              ))}
+            </div>
           )}
 
-          {!enChoix && media?.folder && (
-            <>
-              {media.images.length === 0 ? (
-                <p className="media__empty">
-                  Aucune image dans {media.folder}. Deposez-y vos fichiers, puis rouvrez cette
-                  fenetre.
-                </p>
-              ) : (
-                <div className="media__grid">
-                  {media.images.map((path) => (
-                    <button
-                      key={path}
-                      type="button"
-                      className={`media__item${path === current ? " is-current" : ""}`}
-                      title={path}
-                      onClick={() => onPick(path)}
-                    >
-                      <img src={api.fileUrl(path)} alt="" draggable={false} />
-                      <span>{path.split("/").pop()}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
+          {media && !present && (
+            <p className="media__empty">
+              Le dossier <code>{dossier}</code> n'existe pas encore. Creez-le avec ce nom exact,
+              puis rouvrez cette fenetre.
+            </p>
           )}
+
+          {media && present && items.length === 0 && (
+            <p className="media__empty">
+              Aucun fichier dans <code>{dossier}</code>. Deposez-y vos
+              {vision ? " images" : ` icones (${FORMATS})`}, puis rouvrez cette fenetre.
+            </p>
+          )}
+
+          {media && present && vision && items.length > 0 && (
+            <div className="media__grid">
+              {items.map((path) => (
+                <button
+                  key={path}
+                  type="button"
+                  className={`media__item${door.cover === path ? " is-current" : ""}`}
+                  title={path}
+                  onClick={() => onPickVision(path)}
+                >
+                  <img src={api.fileUrl(path)} alt="" draggable={false} />
+                  <span>{path.split("/").pop()}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
         </div>
 
         <footer className="media__foot">
-          {!enChoix && media?.folder && (
-            <button type="button" className="media__link" onClick={() => setChoosing(true)}>
-              Changer de dossier…
-            </button>
-          )}
-          {current && !enChoix && (
-            <button type="button" className="media__link is-danger" onClick={() => onPick(null)}>
+          <button type="button" className="media__link" onClick={load}>
+            Relire le dossier
+          </button>
+          {vision && door.cover && (
+            <button
+              type="button"
+              className="media__link is-danger"
+              onClick={() => onPickVision(null)}
+            >
               Retirer l'image
             </button>
           )}
         </footer>
       </div>
     </div>
+  );
+}
+
+/** Une des deux apparences fournies avec le logiciel. */
+function BuiltIn({
+  label,
+  active,
+  onPick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  onPick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      className={`media__item media__item--builtin${active ? " is-current" : ""}`}
+      onClick={onPick}
+    >
+      <span className="media__builtin">{children}</span>
+      <span>{label}</span>
+    </button>
   );
 }

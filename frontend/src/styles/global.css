@@ -692,6 +692,37 @@ code {
   transform: scale(1.25);
 }
 
+/* ------------------------------------ Une icone apportee par l'utilisateur */
+
+/* Elle occupe exactement l'encombrement d'une porte, quelle que soit sa forme :
+   `contain` la met a l'echelle sans jamais la deformer ni la rogner. Le cerveau,
+   lui, a sa taille propre — c'est le seul a echapper a cette regle. */
+.door__badge {
+  width: 96px;
+  height: 132px;
+  margin: 0 auto;
+  transition: transform var(--slow) var(--ease), filter var(--slow) var(--ease);
+}
+
+/* La boite fait exactement la taille d'une porte, et `contain` y loge le dessin
+   sans le deformer. Des `max-*` ne suffiraient pas : une image sans dimensions
+   propres etirerait sa rangee au lieu de s'y plier. */
+.door__badge img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.door:hover .door__badge {
+  transform: translateY(-2px) scale(1.04);
+  filter: drop-shadow(0 10px 26px var(--accent-soft));
+}
+
+.node.is-drop-target .door__badge {
+  filter: drop-shadow(0 0 18px var(--accent));
+}
+
 /* ------------------------------------------------------- Un cerveau */
 
 /* Deux fois plus grand qu'une porte, volontairement : le cerveau represente

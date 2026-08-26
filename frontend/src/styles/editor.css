@@ -1426,6 +1426,46 @@ body:has(.rail__grip.is-dragging) * {
   white-space: nowrap;
 }
 
+/* Les icones sont petites : une grille plus serree les montre toutes d'un coup. */
+.media__grid--icons {
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+}
+
+.media__grid--icons .media__item img {
+  height: 64px;
+  object-fit: contain;
+}
+
+.media__builtin {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  background: var(--bg);
+  border-radius: 1px;
+}
+
+/* Une porte en reduction, pour reconnaitre l'apparence fournie. */
+.media__door {
+  width: 26px;
+  height: 36px;
+  background: linear-gradient(180deg, #223a66 0%, #16233d 100%);
+  border: 1px solid var(--line-strong);
+  border-radius: 1px;
+}
+
+.media__brain {
+  font-size: 30px;
+  line-height: 1;
+}
+
+.media__hint code,
+.media__empty code {
+  padding: 1px 5px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 1px;
+}
+
 .media__foot {
   display: flex;
   gap: 16px;

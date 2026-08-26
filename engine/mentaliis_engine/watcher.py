@@ -16,11 +16,11 @@ from pathlib import Path
 
 from watchfiles import awatch
 
-from .config import IGNORED_DIRS, NOTE_EXTENSIONS
+from .config import ICON_EXTENSIONS, IGNORED_DIRS, MEDIAS_DIR, NOTE_EXTENSIONS
 from .vault.vault import IMAGE_EXTENSIONS, Vault
 
 #: Extensions dont un changement interesse l'interface.
-WATCHED_EXTENSIONS = NOTE_EXTENSIONS | IMAGE_EXTENSIONS
+WATCHED_EXTENSIONS = NOTE_EXTENSIONS | IMAGE_EXTENSIONS | ICON_EXTENSIONS
 
 #: Laisse le temps a une salve d'ecritures de se terminer avant de prevenir.
 SETTLE_MS = 250
@@ -102,6 +102,10 @@ def _is_relevant(vault: Vault, path: Path) -> bool:
         parts = path.resolve().relative_to(vault.root).parts
     except ValueError:
         return False
+    # La reserve de medias commence par un point sans etre cachee pour autant :
+    # deposer une icone doit se voir tout de suite dans l'application.
+    if parts and parts[0] == MEDIAS_DIR:
+        return not path.suffix or path.suffix.lower() in WATCHED_EXTENSIONS
     if any(part in IGNORED_DIRS or part.startswith(".") for part in parts):
         return False
     # Un dossier cree ou supprime n'a pas d'extension : c'est une porte, ca compte.

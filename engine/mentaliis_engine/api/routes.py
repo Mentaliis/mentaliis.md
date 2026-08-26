@@ -33,7 +33,6 @@ from ..models import (
     SetCoverRequest,
     SetIconRequest,
     SetImagesRequest,
-    SetMediaFolderRequest,
     Settings,
     VaultInfo,
 )
@@ -180,18 +179,12 @@ def put_move_global(payload: MoveRequest) -> dict:
     return {"ok": True}
 
 
-# --- Dossier des medias ---
+# --- Reserve de medias ---
 
 
 @router.get("/media", response_model=MediaLibrary)
 def get_media():
-    """Le dossier des medias, ses images, et les dossiers ou en choisir un."""
-    return _guard(_vault().media)
-
-
-@router.put("/media", response_model=MediaLibrary)
-def put_media(payload: SetMediaFolderRequest):
-    _guard(_vault().set_media_folder, payload.folder)
+    """La reserve `.MEDIAS` : ses images, et les icones de `.MEDIAS/.SVG`."""
     return _guard(_vault().media)
 
 

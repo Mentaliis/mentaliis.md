@@ -124,8 +124,12 @@ Ce qui fonctionne :
 - **Traits** : relier deux elements d'une scene en tirant depuis leur poignee,
   les detacher d'un clic sur la croix. Autant de traits que voulu sur un meme
   element. Enregistres tout seuls dans le Vault.
-- **Dossier des medias** : un dossier du Vault, choisi une fois, d'ou viennent
-  toutes les images de vision. Il accueillera aussi sons et videos.
+- **Reserve de medias** : `.MEDIAS`, a la racine du Vault, d'ou viennent toutes
+  les images de vision. Elle accueillera aussi sons et videos. Son nom est
+  impose : le logiciel ne reconnait que celui-la, et ne la cree jamais.
+- **Icones de portes** : `porte`, `cerveau`, ou vos propres icones rangees dans
+  `.MEDIAS/.SVG` (svg, png, webp). Elles sont mises a l'echelle d'une porte,
+  sans deformation, quelle que soit leur forme.
 - **Espace** : zoom a la molette, deplacement du fond, positions persistees sur le disque.
 - **Ecriture en apercu vivant** : le markdown se met en forme pendant la frappe.
   Taper `# ` donne un titre aussitot, `---` un trait, `- [ ]` une case a cocher

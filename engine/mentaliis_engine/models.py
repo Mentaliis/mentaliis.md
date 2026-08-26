@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, Field
 
 
@@ -22,8 +20,12 @@ class AttachedImage(BaseModel):
     caption: str = ""
 
 
-#: Les apparences possibles d'un dossier dans l'environnement.
-DoorIcon = Literal["porte", "cerveau"]
+#: Les deux apparences fournies avec le logiciel.
+BUILTIN_ICONS = ("porte", "cerveau")
+
+#: Apparence d'un dossier : « porte », « cerveau », ou le chemin d'une icone
+#: rangee par l'utilisateur dans `.MEDIAS/.SVG`.
+DoorIcon = str
 
 
 class Door(BaseModel):
@@ -204,20 +206,19 @@ class SetCameraRequest(BaseModel):
 
 
 class MediaLibrary(BaseModel):
-    """Le dossier du Vault qui contient les medias, et ce qu'il contient."""
+    """La reserve de medias du Vault, au nom impose."""
 
-    #: Chemin relatif du dossier choisi, ou None tant qu'aucun ne l'est.
-    folder: str | None = None
+    #: Chemin du dossier attendu, toujours le meme.
+    folder: str
+    #: Faux tant que l'utilisateur ne l'a pas cree lui-meme.
+    exists: bool = False
     #: Images qu'il contient, chemins relatifs au Vault.
     images: list[str] = Field(default_factory=list)
-    #: Tous les dossiers du Vault, pour en choisir un quand rien n'est configure.
-    folders: list[str] = Field(default_factory=list)
-
-
-class SetMediaFolderRequest(BaseModel):
-    """Dossier a designer comme responsable des medias."""
-
-    folder: str
+    #: Sous-dossier des icones de portes.
+    icons_folder: str
+    icons_exist: bool = False
+    #: Icones disponibles pour habiller une porte.
+    icons: list[str] = Field(default_factory=list)
 
 
 class Settings(BaseModel):

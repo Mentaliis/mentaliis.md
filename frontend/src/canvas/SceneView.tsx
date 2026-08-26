@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import type { Door, NoteSummary, Position, Scene, SceneLink } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
-import { MediaPicker } from "../components/MediaPicker";
+import { MediaPicker, type MediaKind } from "../components/MediaPicker";
 import { DoorNode } from "./DoorNode";
 import { NoteNode } from "./NoteNode";
 import { type Anchor, SceneLinks } from "./SceneLinks";
@@ -37,8 +37,8 @@ export function SceneView({
   const [doors, setDoors] = useState<Door[]>(scene.doors);
   const [notes, setNotes] = useState<NoteSummary[]>(scene.notes);
   const [menu, setMenu] = useState<Menu | null>(null);
-  /** Porte dont on choisit l'image de vision. */
-  const [visionFor, setVisionFor] = useState<Door | null>(null);
+  /** Porte dont on choisit la vision ou l'apparence, et lequel des deux. */
+  const [picking, setPicking] = useState<{ door: Door; kind: MediaKind } | null>(null);
   const [links, setLinks] = useState<SceneLink[]>(scene.links);
   /** Trait en cours de trace, tant qu'on n'a pas relache. */
   const [pending, setPending] = useState<{ from: string; to: Position } | null>(null);
@@ -215,32 +215,11 @@ export function SceneView({
         ? [
             {
               label: "Changer d'icone",
-              submenu: [
-                {
-                  label: "Porte",
-                  checked: door.icon === "porte",
-                  action: async () => {
-                    await api.setIcon(id, "porte");
-                    onSceneChanged();
-                  },
-                },
-                {
-                  label: "Cerveau",
-                  checked: door.icon === "cerveau",
-                  action: async () => {
-                    await api.setIcon(id, "cerveau");
-                    onSceneChanged();
-                  },
-                },
-              ],
+              action: () => setPicking({ door, kind: "icone" as MediaKind }),
             },
-          ]
-        : []),
-      ...(door
-        ? [
             {
               label: door.cover ? "Changer l'image de vision" : "Choisir une image de vision",
-              action: () => setVisionFor(door),
+              action: () => setPicking({ door, kind: "vision" as MediaKind }),
             },
           ]
         : []),
@@ -395,16 +374,26 @@ export function SceneView({
         </button>
       </div>
 
-      {visionFor && (
+      {picking && (
         <MediaPicker
-          doorName={visionFor.name}
-          current={visionFor.cover}
-          onClose={() => setVisionFor(null)}
-          onPick={async (path) => {
-            const porte = visionFor;
-            setVisionFor(null);
+          kind={picking.kind}
+          door={picking.door}
+          onClose={() => setPicking(null)}
+          onPickVision={async (path) => {
+            const porte = picking.door;
+            setPicking(null);
             try {
               await api.setCover(porte.id, path);
+              onSceneChanged();
+            } catch (problem) {
+              onError((problem as Error).message);
+            }
+          }}
+          onPickIcon={async (icon) => {
+            const porte = picking.door;
+            setPicking(null);
+            try {
+              await api.setIcon(porte.id, icon);
               onSceneChanged();
             } catch (problem) {
               onError((problem as Error).message);

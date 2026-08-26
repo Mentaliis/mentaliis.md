@@ -9,71 +9,53 @@ from mentaliis_engine.vault import Vault
 
 @pytest.fixture()
 def vault(tmp_path):
-    (tmp_path / "Medias").mkdir()
-    (tmp_path / "Medias" / "photos").mkdir()
+    (tmp_path / ".MEDIAS" / "photos").mkdir(parents=True)
+    (tmp_path / ".MEDIAS" / ".SVG").mkdir()
     (tmp_path / "Projets").mkdir()
     (tmp_path / "Vision").mkdir()
     (tmp_path / "Sante").mkdir()
-    (tmp_path / "Medias" / "cap.png").write_bytes(b"png")
-    (tmp_path / "Medias" / "photos" / "mer.jpg").write_bytes(b"jpg")
+    (tmp_path / ".MEDIAS" / "cap.png").write_bytes(b"png")
+    (tmp_path / ".MEDIAS" / "photos" / "mer.jpg").write_bytes(b"jpg")
+    (tmp_path / ".MEDIAS" / ".SVG" / "fusee.svg").write_text("<svg/>", "utf-8")
+    (tmp_path / ".MEDIAS" / ".SVG" / "coeur.png").write_bytes(b"png")
+    (tmp_path / ".MEDIAS" / ".SVG" / "etoile.webp").write_bytes(b"webp")
+    (tmp_path / ".MEDIAS" / ".SVG" / "refuse.gif").write_bytes(b"gif")
     (tmp_path / "Projets" / "ailleurs.png").write_bytes(b"png")
     return Vault(tmp_path)
 
 
-# --- Choix du dossier ---
+# --- La reserve, au nom impose ---
 
 
-def test_aucun_dossier_de_medias_au_depart(vault):
-    assert vault.media().folder is None
+def test_la_reserve_porte_un_nom_impose(vault):
+    assert vault.media().folder == ".MEDIAS"
+    assert vault.media().icons_folder == ".MEDIAS/.SVG"
 
 
-def test_les_dossiers_du_vault_sont_proposes(vault):
-    proposes = vault.media().folders
-    assert "Medias" in proposes and "Projets" in proposes
-    assert "Medias/photos" in proposes
+def test_une_reserve_absente_est_signalee(tmp_path):
+    (tmp_path / "Projets").mkdir()
+    reserve = Vault(tmp_path).media()
+    assert reserve.exists is False
+    assert reserve.images == [] and reserve.icons == []
 
 
-def test_designer_un_dossier(vault):
-    assert vault.set_media_folder("Medias") == "Medias"
-    assert vault.media().folder == "Medias"
+def test_la_reserve_est_vue_meme_si_elle_commence_par_un_point(vault):
+    assert vault.media().exists is True
+    assert vault.media().icons_exist is True
 
 
-def test_un_dossier_inexistant_est_refuse(vault):
-    with pytest.raises(Exception):
-        vault.set_media_folder("Jamais vu")
-
-
-def test_le_vault_entier_ne_peut_pas_servir(vault):
-    with pytest.raises(Exception):
-        vault.set_media_folder("")
-
-
-def test_un_fichier_nest_pas_un_dossier(vault):
-    with pytest.raises(Exception):
-        vault.set_media_folder("Medias/cap.png")
-
-
-def test_le_choix_survit_a_une_reouverture(tmp_path, vault):
-    vault.set_media_folder("Medias")
-    assert Vault(tmp_path).media().folder == "Medias"
-
-
-def test_un_dossier_disparu_est_oublie(vault):
-    vault.set_media_folder("Medias")
-    vault.delete("Medias")
-    assert vault.media().folder is None
+def test_la_reserve_napparait_pas_comme_une_porte(vault):
+    assert ".MEDIAS" not in {porte.id for porte in vault.scene("").doors}
 
 
 # --- Ce que le dossier contient ---
 
 
 def test_les_images_du_dossier_sont_listees(vault):
-    vault.set_media_folder("Medias")
-    assert vault.media().images == ["Medias/cap.png", "Medias/photos/mer.jpg"]
+    assert vault.media().images == [".MEDIAS/cap.png", ".MEDIAS/photos/mer.jpg"]
 
 
 def test_les_images_hors_du_dossier_sont_ignorees(vault):
-    vault.set_media_folder("Medias")
     assert "Projets/ailleurs.png" not in vault.media().images
 
 
@@ -81,25 +63,22 @@ def test_les_images_hors_du_dossier_sont_ignorees(vault):
 
 
 def test_une_image_du_dossier_est_acceptee(vault):
-    vault.set_media_folder("Medias")
-    porte = vault.set_cover("Projets", "Medias/cap.png")
-    assert porte.cover == "Medias/cap.png"
+    porte = vault.set_cover("Projets", ".MEDIAS/cap.png")
+    assert porte.cover == ".MEDIAS/cap.png"
 
 
 def test_une_image_hors_du_dossier_est_refusee(vault):
-    vault.set_media_folder("Medias")
     with pytest.raises(Exception):
         vault.set_cover("Projets", "Projets/ailleurs.png")
 
 
-def test_sans_dossier_configure_toute_image_du_vault_passe(vault):
-    porte = vault.set_cover("Projets", "Projets/ailleurs.png")
-    assert porte.cover == "Projets/ailleurs.png"
+def test_meme_une_image_bien_rangee_ailleurs_est_refusee(vault):
+    with pytest.raises(Exception):
+        vault.set_cover("Projets", "Projets/ailleurs.png")
 
 
 def test_retirer_une_image_reste_possible(vault):
-    vault.set_media_folder("Medias")
-    vault.set_cover("Projets", "Medias/cap.png")
+    vault.set_cover("Projets", ".MEDIAS/cap.png")
     assert vault.set_cover("Projets", None).cover is None
 
 
@@ -112,13 +91,14 @@ def liens(vault):
 
 def test_une_porte_se_relie_a_plusieurs_autres(vault):
     # Surjection : la meme arrivee recoit plusieurs departs.
+    (vault.root / "Argent").mkdir()
     vault.link("Projets", "Vision")
     vault.link("Projets", "Sante")
-    vault.link("Projets", "Medias")
+    vault.link("Projets", "Argent")
     assert liens(vault) == {
-        ("Projets", "Vision"),
+        ("Argent", "Projets"),
         ("Projets", "Sante"),
-        ("Medias", "Projets"),
+        ("Projets", "Vision"),
     }
 
 
@@ -130,7 +110,8 @@ def test_plusieurs_portes_se_relient_a_la_meme(vault):
 
 def test_un_reseau_complet_tient_debout(vault):
     # Chacun relie a chacun : rien ne se marche dessus.
-    portes = ["Medias", "Projets", "Sante", "Vision"]
+    (vault.root / "Argent").mkdir()
+    portes = ["Argent", "Projets", "Sante", "Vision"]
     for i, a in enumerate(portes):
         for b in portes[i + 1 :]:
             vault.link(a, b)
@@ -184,3 +165,69 @@ def test_retitrer_conserve_la_position(vault):
     note = vault.retitle("Projets/idee.md", "Autre")
     place = next(n for n in vault.scene("Projets").notes if n.id == note.id)
     assert (place.position.x, place.position.y) == (42, -42)
+
+
+# --- Icones de portes ---
+
+
+def test_les_icones_de_la_reserve_sont_listees(vault):
+    assert vault.media().icons == [
+        ".MEDIAS/.SVG/coeur.png",
+        ".MEDIAS/.SVG/etoile.webp",
+        ".MEDIAS/.SVG/fusee.svg",
+    ]
+
+
+def test_un_format_non_permis_est_ignore(vault):
+    assert not any(icon.endswith(".gif") for icon in vault.media().icons)
+
+
+def test_les_icones_ne_polluent_pas_les_images_de_vision(vault):
+    assert vault.media().images == [".MEDIAS/cap.png", ".MEDIAS/photos/mer.jpg"]
+
+
+def test_habiller_une_porte_avec_son_icone(vault):
+    porte = vault.set_icon("Projets", ".MEDIAS/.SVG/fusee.svg")
+    assert porte.icon == ".MEDIAS/.SVG/fusee.svg"
+    assert next(d for d in vault.scene("").doors if d.id == "Projets").icon == (
+        ".MEDIAS/.SVG/fusee.svg"
+    )
+
+
+def test_les_trois_formats_sont_acceptes(vault):
+    for icon in (".MEDIAS/.SVG/fusee.svg", ".MEDIAS/.SVG/coeur.png", ".MEDIAS/.SVG/etoile.webp"):
+        assert vault.set_icon("Projets", icon).icon == icon
+
+
+def test_un_format_refuse_ne_passe_pas(vault):
+    with pytest.raises(Exception):
+        vault.set_icon("Projets", ".MEDIAS/.SVG/refuse.gif")
+
+
+def test_une_icone_rangee_ailleurs_est_refusee(vault):
+    with pytest.raises(Exception):
+        vault.set_icon("Projets", ".MEDIAS/cap.png")
+    with pytest.raises(Exception):
+        vault.set_icon("Projets", "Projets/ailleurs.png")
+
+
+def test_une_icone_inexistante_est_refusee(vault):
+    with pytest.raises(Exception):
+        vault.set_icon("Projets", ".MEDIAS/.SVG/jamais-vue.svg")
+
+
+def test_les_deux_apparences_fournies_restent_valides(vault):
+    assert vault.set_icon("Projets", "cerveau").icon == "cerveau"
+    assert vault.set_icon("Projets", "porte").icon == "porte"
+
+
+def test_une_icone_survit_a_une_reouverture(tmp_path, vault):
+    vault.set_icon("Projets", ".MEDIAS/.SVG/coeur.png")
+    portes = Vault(tmp_path).scene("").doors
+    assert next(d for d in portes if d.id == "Projets").icon == ".MEDIAS/.SVG/coeur.png"
+
+
+def test_un_layout_ecrit_a_la_main_ne_casse_rien(vault):
+    # Une valeur bricolee hors de la reserve retombe sur la porte.
+    vault.layout.set_field("Projets", "icon", "/etc/passwd")
+    assert next(d for d in vault.scene("").doors if d.id == "Projets").icon == "porte"

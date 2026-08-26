@@ -16,6 +16,17 @@ LAYOUT_FILE = "layout.json"
 # Extensions considerees comme des notes.
 NOTE_EXTENSIONS = {".md", ".markdown"}
 
+# Le dossier des medias porte un nom impose : le logiciel ne reconnait que
+# celui-la. Il commence par un point pour rester en dehors des portes — c'est
+# une reserve, pas un lieu ou l'on entre.
+MEDIAS_DIR = ".MEDIAS"
+
+# Les icones personnalisees des portes, dans un sous-dossier lui aussi impose.
+ICONS_DIR = ".SVG"
+
+# Seuls formats acceptes pour une icone de porte.
+ICON_EXTENSIONS = {".svg", ".png", ".webp"}
+
 # Dossiers ignores lors du parcours d'un Vault.
 IGNORED_DIRS = {".mentaliis", ".git", ".obsidian", "node_modules", "__pycache__", ".trash"}
 

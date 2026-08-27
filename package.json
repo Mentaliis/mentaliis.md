@@ -1,7 +1,7 @@
 {
   "name": "mentaliis",
   "private": true,
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Mentaliis — un second cerveau spatial.",
   "scripts": {
     "dev": "tauri dev",

@@ -114,6 +114,22 @@ class SceneResponse(BaseModel):
     camera: Camera | None = None
 
 
+class Folder(BaseModel):
+    """Un dossier du Vault, tel qu'on le propose comme destination."""
+
+    #: Chemin relatif ; la chaine vide designe la racine.
+    id: str
+    name: str
+    #: Profondeur dans l'arborescence, pour l'indentation de la liste.
+    depth: int
+
+
+class MoveToRequest(BaseModel):
+    """Ou ranger l'element ; la chaine vide designe la racine du Vault."""
+
+    destination: str = ""
+
+
 class VaultInfo(BaseModel):
     """Le Vault actuellement ouvert."""
 

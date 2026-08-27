@@ -11,6 +11,7 @@ import type {
   Constellation,
   Door,
   DoorIcon,
+  Folder,
   MediaLibrary,
   Note,
   NoteLinks,
@@ -129,6 +130,16 @@ export const api = {
   // --- Portes ---
   createDoor: (parent: string, name: string) =>
     request<Door>("/door", { method: "POST", ...body({ parent, name }) }),
+  /** Tous les dossiers du Vault, pour choisir ou ranger un element. */
+  folders: () => request<Folder[]>("/folders"),
+
+  /** Range une note ou une porte dans un autre dossier. Rend son nouvel identifiant. */
+  moveTo: (id: string, destination: string) =>
+    request<{ id: string }>(`/move-to?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ destination }),
+    }),
+
   setIconSize: (id: string, size: number) =>
     request<Door>(`/door/icon-size?id=${encodeURIComponent(id)}`, {
       method: "PUT",

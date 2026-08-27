@@ -164,3 +164,12 @@ export interface EngineEvent {
   paths?: string[];
   reason?: string;
 }
+
+/** Un dossier du Vault, propose comme destination d'un deplacement. */
+export interface Folder {
+  /** Chemin relatif ; la chaine vide designe la racine. */
+  id: string;
+  name: string;
+  /** Profondeur dans l'arborescence, pour l'indentation. */
+  depth: number;
+}

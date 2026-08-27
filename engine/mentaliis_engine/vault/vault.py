@@ -28,6 +28,7 @@ from ..config import (
     app_data_dir,
 )
 from ..models import (
+    Folder,
     AttachedImage,
     Camera,
     Constellation,
@@ -632,6 +633,65 @@ class Vault:
         self.layout.rename(GLOBAL + item_id, GLOBAL + new_id)
         self._touch(source)
         self._touch(target)
+        self.links.invalidate()
+        return new_id
+
+    def folders(self) -> list[Folder]:
+        """Tous les dossiers du Vault, pour choisir une destination.
+
+        La racine en tete, puis chaque dossier avec sa profondeur : de quoi
+        dessiner une arborescence sans avoir a la recalculer cote interface.
+        """
+        arbre = [Folder(id="", name=self.name, depth=0)]
+        for folder in self._all_folders():
+            rel = self.relative(folder)
+            arbre.append(Folder(id=rel, name=folder.name, depth=rel.count("/") + 1))
+        return arbre
+
+    def move_to(self, item_id: str, destination: str) -> str:
+        """Deplace une note ou une porte dans un autre dossier du Vault.
+
+        Le fichier suit, mais aussi tout ce qui lui est attache : sa position,
+        son icone, sa vision, le cadrage de la scene qu'il contient, et les
+        traits qui le relient. Sans cela, deplacer reviendrait a tout perdre
+        sauf le contenu.
+        """
+        source = self.resolve(item_id)
+        if source == self.root:
+            raise VaultError("Le Vault lui-meme ne se deplace pas.")
+        if not source.exists():
+            raise VaultError(f"Introuvable : {item_id}")
+
+        dossier = self.resolve(destination) if destination else self.root
+        if not dossier.is_dir():
+            raise VaultError(f"Ce dossier n'existe pas : {destination or self.name}")
+        if any(part.startswith(".") for part in Path(destination).parts if part):
+            raise VaultError("On ne range rien dans un dossier cache.")
+
+        # Un dossier ne peut pas entrer en lui-meme, ni dans ce qu'il contient :
+        # il se refermerait sur son propre contenu, qui deviendrait inatteignable.
+        if source.is_dir() and (dossier == source or source in dossier.parents):
+            raise VaultError("Un dossier ne peut pas etre range dans lui-meme.")
+        if dossier == source.parent:
+            return item_id  # deja la : rien a faire, et surtout rien a casser
+
+        cible = _unique(dossier / source.name)
+        shutil.move(str(source), str(cible))
+        new_id = self.relative(cible)
+
+        # La position, l'icone, la vision, le cadrage, les traits : tout suit.
+        self.layout.rename(item_id, new_id)
+        self.layout.rename(GLOBAL + item_id, GLOBAL + new_id)
+        self.layout.rename(CAMERA + item_id, CAMERA + new_id)
+        # Sauf la place dans la scene : l'ancienne n'a plus de sens ailleurs, et
+        # l'element se poserait par-dessus ce qui s'y trouve deja.
+        self.layout.set_field(new_id, "x", None)
+        self.layout.set_field(new_id, "y", None)
+
+        self._touch(source)
+        self._touch(cible)
+        self._touch(source.parent)
+        self._touch(dossier)
         self.links.invalidate()
         return new_id
 

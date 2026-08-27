@@ -34,6 +34,8 @@ from ..models import (
     SceneResponse,
     SetCameraRequest,
     SetCoverRequest,
+    Folder,
+    MoveToRequest,
     SetIconRequest,
     SetIconSizeRequest,
     SetImagesRequest,
@@ -241,6 +243,18 @@ def post_door(payload: CreateDoorRequest):
 @router.put("/door/cover", response_model=Door)
 def put_door_cover(payload: SetCoverRequest, id: str = Query(...)):
     return _guard(_vault().set_cover, id, payload.cover)
+
+
+@router.get("/folders", response_model=list[Folder])
+def get_folders():
+    """Tous les dossiers du Vault, pour choisir ou ranger un element."""
+    return _guard(_vault().folders)
+
+
+@router.put("/move-to")
+def put_move_to(payload: MoveToRequest, id: str = Query(...)) -> dict:
+    """Range une note ou une porte dans un autre dossier."""
+    return {"id": _guard(_vault().move_to, id, payload.destination)}
 
 
 @router.put("/door/icon-size", response_model=Door)

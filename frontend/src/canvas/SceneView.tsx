@@ -12,6 +12,7 @@ import type {
 } from "../lib/types";
 import { ContextMenu, type MenuItem } from "../components/ContextMenu";
 import { useDialog } from "../components/Dialog";
+import { DossierPicker } from "../components/DossierPicker";
 import { MediaPicker, type MediaKind } from "../components/MediaPicker";
 import { DoorNode } from "./DoorNode";
 import { ImageNode } from "./ImageNode";
@@ -50,6 +51,10 @@ export function SceneView({
   const [visuels, setVisuels] = useState<SceneImage[]>(scene.images);
   const [menu, setMenu] = useState<Menu | null>(null);
   /** Porte dont on choisit la vision ou l'apparence, et lequel des deux. */
+  /** L'element que l'on range ailleurs, le temps de choisir sa destination. */
+  const [aRanger, setARanger] = useState<{ id: string; nom: string; parent: string } | null>(
+    null,
+  );
   const [picking, setPicking] = useState<{
     kind: MediaKind;
     id: string;
@@ -308,6 +313,18 @@ export function SceneView({
             },
           ]),
       {
+        label: "Ranger ailleurs…",
+        // Le dossier d'origine se lit dans l'identifiant lui-meme. Le prendre
+        // dans `scene.path` reviendrait a le capturer au premier rendu de ce
+        // menu, et l'on marquerait alors le mauvais dossier comme « deja ici ».
+        action: () =>
+          setARanger({
+            id,
+            nom: name,
+            parent: id.includes("/") ? id.slice(0, id.lastIndexOf("/")) : "",
+          }),
+      },
+      {
         label: "Supprimer",
         danger: true,
         action: async () => {
@@ -503,6 +520,23 @@ export function SceneView({
           ⤢
         </button>
       </div>
+
+      {aRanger && (
+        <DossierPicker
+          id={aRanger.id}
+          nom={aRanger.nom}
+          parent={aRanger.parent}
+          onClose={() => setARanger(null)}
+          onRange={(nouveauId) => {
+            const ancien = aRanger.id;
+            setARanger(null);
+            // L'element a change de chemin : les onglets ouverts dessus doivent
+            // suivre, sinon ils pointeraient vers un fichier qui n'est plus la.
+            onRenamed(ancien, nouveauId);
+            onSceneChanged();
+          }}
+        />
+      )}
 
       {picking && (
         <MediaPicker

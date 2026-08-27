@@ -1522,3 +1522,168 @@ code {
 .garde-arbre {
   display: contents;
 }
+
+/* ============================================================
+   Ranger ailleurs — choisir un dossier d'arrivee dans le Vault
+   ============================================================ */
+
+.ranger__voile {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 6, 12, 0.72);
+  backdrop-filter: blur(3px);
+  animation: ranger-voile var(--fast) var(--ease);
+}
+
+@keyframes ranger-voile {
+  from {
+    opacity: 0;
+  }
+}
+
+.ranger {
+  display: flex;
+  flex-direction: column;
+  width: min(520px, 92vw);
+  max-height: min(70vh, 620px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.55);
+  animation: ranger-entre var(--slow) var(--ease);
+}
+
+@keyframes ranger-entre {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+.ranger__tete {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+}
+
+.ranger__tete h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ranger__mot {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+
+.ranger__fermer {
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.ranger__fermer:hover {
+  color: var(--text);
+  background: var(--bg-raised);
+}
+
+.ranger__filtre {
+  margin: 0 20px 12px;
+  padding: 9px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--fast) var(--ease);
+}
+
+.ranger__filtre:focus {
+  border-color: var(--accent);
+}
+
+.ranger__liste {
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px 12px;
+  overflow-y: auto;
+}
+
+.ranger__choix {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.ranger__choix:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.ranger__choix:hover:not(:disabled) .icone {
+  color: var(--accent);
+}
+
+.ranger__choix:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.ranger__nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Le dossier ou l'element se trouve deja : visible, mais hors d'atteinte. */
+.ranger__choix.is-ici {
+  color: var(--text-faint);
+}
+
+.ranger__ici {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.ranger__vide {
+  padding: 18px 12px;
+  font-size: 13px;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.ranger__erreur {
+  padding: 10px 20px 16px;
+  font-size: 12.5px;
+  color: var(--danger);
+}

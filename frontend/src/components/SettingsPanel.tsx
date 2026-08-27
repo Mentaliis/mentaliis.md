@@ -29,23 +29,22 @@ export function SettingsPanel({
   updateState,
   onCheckUpdate,
 }: Props) {
+  // Les parametres ne se referment que par leur croix. Un clic maladroit a
+  // cote, ou une touche Echap pressee par reflexe, ne doivent pas faire perdre
+  // ce que l'on etait en train de regler.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  }, []);
 
   return (
-    <div
-      className="settings__veil"
-      onPointerDown={(event) => event.target === event.currentTarget && onClose()}
-    >
+    <div className="settings__veil">
       <div className="settings" role="dialog" aria-modal="true" aria-label="Parametres">
         <header className="settings__head">
           <h1>Parametres</h1>
@@ -109,6 +108,28 @@ export function SettingsPanel({
               >
                 Changer de Vault…
               </button>
+            </div>
+          </section>
+
+          <section className="settings__section">
+            <h2>A propos</h2>
+            <p className="settings__hint">
+              Mentaliis est un espace ou l'on entre : chaque dossier y est une porte,
+              chaque note un objet que l'on place librement. Tout vit dans un Vault,
+              sur cette machine, et rien n'en sort.
+            </p>
+            <div className="apropos">
+              <div className="apropos__ligne">
+                <span className="apropos__cle">Edition</span>
+                <span className="apropos__valeur">Mentaliis {__APP_VERSION__}</span>
+              </div>
+              <div className="apropos__ligne">
+                <span className="apropos__cle">Createur</span>
+                <span className="apropos__valeur">AJTVIRTUAL - AMILCAR JOAO</span>
+              </div>
+              <p className="apropos__droit">
+                &copy; {__BUILD_YEAR__} AJTVIRTUAL - AMILCAR JOAO Tous droits réservés.
+              </p>
             </div>
           </section>
 

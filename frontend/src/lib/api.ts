@@ -50,7 +50,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const body = (payload: unknown) => ({ body: JSON.stringify(payload) });
 
 export const api = {
-  health: () => request<{ status: string }>("/health"),
+  /** L'etat du moteur, et le jeton qui dit lequel il est. */
+  health: () => request<{ status: string; token: string | null }>("/health"),
 
   // --- Preferences ---
   settings: () => request<Settings>("/settings"),

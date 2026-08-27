@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 # Le moteur n'ecoute QUE sur la boucle locale : inaccessible depuis le reseau.
@@ -56,14 +57,29 @@ IGNORED_DIRS = {".mentaliis", ".git", ".obsidian", "node_modules", "__pycache__"
 
 # Fichier de preferences globales (hors Vault) : dernier vault ouvert, etc.
 def app_data_dir() -> Path:
-    """Dossier de configuration de l'application, selon la plateforme."""
+    """Dossier de configuration de l'application, selon la plateforme.
+
+    Le moteur de developpement et le moteur installe ne partagent pas ce
+    dossier. Sans cette separation, ouvrir un Vault de test remplacerait le
+    souvenir du dernier Vault de celui qui travaille : au prochain demarrage,
+    l'application installee ouvrirait le Vault de demonstration a la place du
+    sien. On distingue les deux sur ce qui les distingue vraiment — l'un est
+    fige par PyInstaller, l'autre non.
+    """
     if os.name == "nt":
         base = Path(os.environ.get("APPDATA", Path.home() / "AppData" / "Roaming"))
     elif os.uname().sysname == "Darwin":  # type: ignore[attr-defined]
         base = Path.home() / "Library" / "Application Support"
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
-    path = base / "Mentaliis"
+
+    # Une variable d'environnement l'emporte : les tests s'isolent ainsi
+    # completement, sans toucher ni a l'un ni a l'autre.
+    force = os.environ.get("MENTALIIS_CONFIG_DIR")
+    if force:
+        path = Path(force)
+    else:
+        path = base / ("Mentaliis" if getattr(sys, "frozen", False) else "Mentaliis (dev)")
     path.mkdir(parents=True, exist_ok=True)
     return path
 

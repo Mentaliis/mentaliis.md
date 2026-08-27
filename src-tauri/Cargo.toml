@@ -18,6 +18,9 @@ serde_json = "1"
 # La mise a jour automatique ne concerne que les systemes de bureau.
 [target."cfg(any(target_os = \"windows\", target_os = \"macos\", target_os = \"linux\"))".dependencies]
 tauri-plugin-updater = "2"
+# Une seule fenetre Mentaliis a la fois : deux se disputeraient le port du
+# moteur, et travailleraient sur des Vaults differents sans le savoir.
+tauri-plugin-single-instance = "2"
 tauri-plugin-process = "2"
 
 [features]

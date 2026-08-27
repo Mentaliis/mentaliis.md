@@ -1485,3 +1485,21 @@ code {
 .settings__action--maj:hover {
   filter: brightness(1.12);
 }
+
+/* Un bouton dans les ecrans de demarrage, quand il y a quelque chose a tenter. */
+.boot__action {
+  margin-top: 20px;
+  padding: 9px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--accent-deep);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease);
+}
+
+.boot__action:hover {
+  background: var(--accent-deep-hover);
+}

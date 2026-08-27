@@ -14,6 +14,31 @@ use tauri::Manager;
 /// Le processus du moteur, garde pour pouvoir l'arreter.
 pub struct EngineHandle(Mutex<Option<Child>>);
 
+/// De quoi reconnaitre le moteur que cette fenetre a elle-meme demarre.
+///
+/// Le port peut deja etre pris — un second Mentaliis, un moteur de
+/// developpement oublie — et la fenetre s'y attacherait sans rien remarquer,
+/// pour travailler sur un tout autre Vault. Ce jeton, tire a chaque lancement
+/// et transmis au moteur, permet a l'interface de verifier a qui elle parle.
+pub struct EngineToken(pub String);
+
+pub fn tirer_un_jeton_public() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let instant = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    // Le numero du processus distingue deux lancements simultanes, l'instant
+    // distingue deux lancements successifs du meme programme.
+    format!("{:x}-{:x}", std::process::id(), instant)
+}
+
+/// Le jeton attendu, pour que l'interface puisse le comparer a celui du moteur.
+#[tauri::command]
+pub fn jeton_moteur(jeton: State<'_, EngineToken>) -> String {
+    jeton.0.clone()
+}
+
 impl EngineHandle {
     /// Arrete le moteur et attend qu'il soit vraiment parti.
     ///
@@ -46,7 +71,10 @@ pub fn arreter_moteur(handle: State<'_, EngineHandle>) {
     std::thread::sleep(std::time::Duration::from_millis(900));
 }
 
-pub fn start<R: Runtime>(app: &AppHandle<R>) -> Result<EngineHandle, Box<dyn std::error::Error>> {
+pub fn start<R: Runtime>(
+    app: &AppHandle<R>,
+    jeton: &str,
+) -> Result<EngineHandle, Box<dyn std::error::Error>> {
     // Un moteur absent ne doit jamais empecher la fenetre de s'ouvrir : l'interface
     // sait dire elle-meme que le moteur ne repond pas, ce qui vaut mieux qu'une
     // application qui refuse de demarrer sans expliquer pourquoi.
@@ -62,6 +90,7 @@ pub fn start<R: Runtime>(app: &AppHandle<R>) -> Result<EngineHandle, Box<dyn std
     // l'arreter, il s'en va de lui-meme plutot que de rester seul a tenir le
     // port et ses propres fichiers.
     command.env("MENTALIIS_PARENT_PID", std::process::id().to_string());
+    command.env("MENTALIIS_TOKEN", jeton);
 
     #[cfg(windows)]
     {

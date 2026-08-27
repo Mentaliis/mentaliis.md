@@ -13,12 +13,13 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { VaultPicker } from "./components/VaultPicker";
 import { NoteEditor } from "./editor/NoteEditor";
 import { api } from "./lib/api";
+import { jetonAttendu } from "./lib/jeton";
 import { useEngineEvents } from "./lib/useEngineEvents";
 import { useSettings } from "./lib/useSettings";
 import { useUpdater } from "./lib/useUpdater";
 import type { Constellation, Scene, VaultInfo } from "./lib/types";
 
-type EngineState = "demarrage" | "pret" | "absent";
+type EngineState = "demarrage" | "pret" | "absent" | "etranger";
 
 /** Une note ouverte dans un onglet. */
 interface OpenNote {
@@ -47,13 +48,27 @@ export default function App() {
   const [railWidth, setRailWidth] = useState<number | null>(null);
 
   // Attend que le moteur reponde : il peut demarrer un peu apres la fenetre.
+  //
+  // Et verifie que c'est bien le sien. Le port peut deja etre occupe — un
+  // second Mentaliis, un moteur de developpement reste ouvert — et la fenetre
+  // s'y attacherait sans rien remarquer : elle afficherait alors un tout autre
+  // Vault que celui attendu, et deux applications ecriraient au meme endroit.
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
     const ping = async () => {
       try {
-        await api.health();
+        const sante = await api.health();
         if (cancelled) return;
+
+        const attendu = await jetonAttendu();
+        // Hors de la fenetre native, il n'y a pas de jeton a comparer : en
+        // developpement, le moteur est lance a la main et c'est tres bien.
+        if (attendu !== null && sante.token !== attendu) {
+          setEngine("etranger");
+          return;
+        }
+
         setEngine("pret");
         const existing = await api.getVault();
         if (!cancelled && existing) setVault(existing);
@@ -342,6 +357,29 @@ export default function App() {
           <br />
           <code>python -m mentaliis_engine.main</code>
         </p>
+      </div>
+    );
+  }
+
+  if (engine === "etranger") {
+    return (
+      <div className="boot boot--error">
+        <h1>Un autre moteur occupe deja la place</h1>
+        <p>
+          Mentaliis a bien demarre, mais le port 8756 etait deja pris : un second
+          Mentaliis est ouvert quelque part, ou un moteur lance a la main est reste
+          en fond.
+          <br />
+          <br />
+          Sans cette verification, cette fenetre travaillerait sur le Vault de
+          l'autre — pas sur le votre.
+          <br />
+          <br />
+          Fermez l'autre, puis relancez Mentaliis.
+        </p>
+        <button type="button" className="boot__action" onClick={() => window.location.reload()}>
+          Reessayer
+        </button>
       </div>
     );
   }

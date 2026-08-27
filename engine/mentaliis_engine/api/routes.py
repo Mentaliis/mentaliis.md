@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import os
 
 from fastapi import APIRouter, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -66,8 +67,15 @@ def _guard(callable_, *args, **kwargs):
 
 @router.get("/health")
 def health() -> dict:
-    """Permet a l'interface de savoir que le moteur a fini de demarrer."""
-    return {"status": "ok"}
+    """Dit que le moteur est pret — et surtout, dit lequel il est.
+
+    Le port peut deja etre occupe : un second Mentaliis, ou un moteur de
+    developpement reste ouvert. La fenetre s'attacherait alors a celui-la sans
+    rien remarquer, et travaillerait sur un tout autre Vault que celui attendu.
+    Le jeton, tire au sort par la coquille a chaque lancement et transmis au
+    moteur qu'elle demarre, permet a l'interface de reconnaitre le sien.
+    """
+    return {"status": "ok", "token": os.environ.get("MENTALIIS_TOKEN")}
 
 
 # --- Vault ---

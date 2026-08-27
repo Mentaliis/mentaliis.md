@@ -31,14 +31,15 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
     setPositions(next);
   }, [data]);
 
-  // Le ciel se retrouve tel qu'on l'avait laisse.
-  useRememberedCamera(
-    CONSTELLATION_VIEW,
-    data.camera,
-    viewport,
-    [...data.doors, ...data.notes].map((item) => item.position),
-    surface,
+  // Un tableau neuf a chaque rendu relancerait sans repit les effets qui le
+  // surveillent : on ne le refait que lorsque le ciel change vraiment.
+  const points = useMemo(
+    () => [...data.doors, ...data.notes].map((item) => item.position),
+    [data.doors, data.notes],
   );
+
+  // Le ciel se retrouve tel qu'on l'avait laisse.
+  useRememberedCamera(CONSTELLATION_VIEW, data.camera, viewport, points, surface);
 
   /**
    * Ramene tout a l'ecran, au clavier comme au bouton.
@@ -50,8 +51,8 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
   const recentrer = useCallback(() => {
     const element = surface.current;
     if (!element) return;
-    viewport.fit(Object.values(positions), element.clientWidth, element.clientHeight);
-  }, [viewport, positions]);
+    viewport.fit(points, element.clientWidth, element.clientHeight);
+  }, [viewport, points]);
 
   useEffect(() => {
     const auClavier = (event: KeyboardEvent) => {

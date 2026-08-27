@@ -1503,3 +1503,15 @@ code {
 .boot__action:hover {
   background: var(--accent-deep-hover);
 }
+
+/* Le temps d'un relevement silencieux : le fond, et rien d'autre. Aucun
+   clignotement, aucun message — l'interruption doit passer inapercue. */
+.garde-silence {
+  height: 100%;
+  background: var(--bg-deep);
+}
+
+/* L'enveloppe du relevement : elle ne doit rien changer a la mise en page. */
+.garde-arbre {
+  display: contents;
+}

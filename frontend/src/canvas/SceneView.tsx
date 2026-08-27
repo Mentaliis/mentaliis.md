@@ -1,6 +1,6 @@
 /** L'environnement : la scene dans laquelle flottent les portes et les notes. */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type {
   Door,
@@ -169,14 +169,15 @@ export function SceneView({
     [onError, onSceneChanged],
   );
 
-  // On retrouve la porte exactement comme on l'avait laissee.
-  useRememberedCamera(
-    scene.path,
-    scene.camera,
-    viewport,
-    [...scene.doors, ...scene.notes, ...scene.images].map((item) => item.position),
-    surface,
+  // Un tableau neuf a chaque rendu relancerait sans repit les effets qui le
+  // surveillent : on ne le refait que lorsque la scene change vraiment.
+  const points = useMemo(
+    () => [...scene.doors, ...scene.notes, ...scene.images].map((item) => item.position),
+    [scene.doors, scene.notes, scene.images],
   );
+
+  // On retrouve la porte exactement comme on l'avait laissee.
+  useRememberedCamera(scene.path, scene.camera, viewport, points, surface);
 
   const moveLocal = useCallback((id: string, position: Position) => {
     const apply = <T extends { id: string; position: Position }>(items: T[]) =>
@@ -204,8 +205,8 @@ export function SceneView({
   const recentrer = useCallback(() => {
     const element = surface.current;
     if (!element) return;
-    viewport.fit([...doors, ...notes, ...visuels].map((item) => item.position), element.clientWidth, element.clientHeight);
-  }, [viewport, doors, notes, visuels]);
+    viewport.fit(points, element.clientWidth, element.clientHeight);
+  }, [viewport, points]);
 
   useEffect(() => {
     const auClavier = (event: KeyboardEvent) => {

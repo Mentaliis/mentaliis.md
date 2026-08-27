@@ -5,10 +5,11 @@
   "description": "Mentaliis — un second cerveau spatial.",
   "scripts": {
     "dev": "tauri dev",
+    "test": "npm --prefix frontend run test",
     "engine:build": "node scripts/build-engine.mjs",
     "build": "node scripts/build-engine.mjs && tauri build",
-    "tauri": "tauri",
-    "manifest": "node scripts/build-manifest.mjs"
+    "manifest": "node scripts/build-manifest.mjs",
+    "tauri": "tauri"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0"

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 
 /** Le numero de version n'a qu'une source : le package.json de la racine. */
 const version = JSON.parse(readFileSync("../package.json", "utf8")).version as string;
@@ -20,9 +20,19 @@ export default defineConfig({
     port: 1420,
     strictPort: true,
   },
+  // Les tests de l'interface : de la logique pure, verifiee sans navigateur.
+  test: {
+    environment: "jsdom",
+    include: ["src/**/*.test.tsx", "src/**/*.test.ts"],
+    globals: true,
+  },
   build: {
     // Cible des webviews modernes : Edge WebView2 (Windows) et WebKit (macOS / Linux).
     target: "es2021",
     outDir: "dist",
+    // Les cartes de source voyagent avec l'application : sans elles, une panne
+    // ne nomme qu'un identifiant minifie — « Kv » — et l'on ne peut rien en
+    // faire. Avec elles, le message designe le fichier et la ligne exacts.
+    sourcemap: true,
   },
 });

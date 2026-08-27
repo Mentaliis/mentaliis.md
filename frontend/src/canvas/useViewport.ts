@@ -7,7 +7,7 @@
  * flou des qu'on zoome.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { Camera } from "../lib/types";
 
@@ -20,9 +20,40 @@ const MAX_SCALE = 4;
 const SETTLE_MS = 180;
 
 export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
-  const [camera, setCamera] = useState<Camera>(initial);
+  const [camera, poserCamera] = useState<Camera>(initial);
   const [panning, setPanning] = useState(false);
   const [moving, setMoving] = useState(false);
+
+  /**
+   * Le frein.
+   *
+   * React ne s'arrete que devant une valeur strictement identique, et une
+   * camera est toujours un objet neuf. Un effet qui repose sans cesse le meme
+   * cadrage provoquerait donc un rendu sans fin — et React finit par tout
+   * abandonner en signalant une profondeur de mise a jour depassee, ce qui
+   * vide l'ecran. On compare donc les valeurs, pas les objets : reposer le
+   * meme cadrage ne coute rien et ne declenche rien.
+   */
+  const setCamera = useCallback(
+    (suite: Camera | ((precedente: Camera) => Camera)) => {
+      poserCamera((precedente) => {
+        const suivante = typeof suite === "function" ? suite(precedente) : suite;
+        if (!suivante) return precedente;
+        if (
+          !Number.isFinite(suivante.x) ||
+          !Number.isFinite(suivante.y) ||
+          !Number.isFinite(suivante.scale) ||
+          suivante.scale <= 0
+        ) {
+          // Une camera illisible n'a aucune chance d'ameliorer la situation :
+          // l'appliquer rendrait la scene invisible.
+          return precedente;
+        }
+        return signature(suivante) === signature(precedente) ? precedente : suivante;
+      });
+    },
+    [],
+  );
 
   const origin = useRef<{ px: number; py: number; cx: number; cy: number } | null>(null);
   const settle = useRef<number | undefined>(undefined);
@@ -170,23 +201,42 @@ export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
   );
 
   /** Style a poser sur le calque qui contient les elements. */
-  const worldStyle: React.CSSProperties = {
-    transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.scale})`,
-    willChange: moving ? "transform" : "auto",
-  };
+  const worldStyle: React.CSSProperties = useMemo(
+    () => ({
+      transform: `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.scale})`,
+      willChange: moving ? "transform" : "auto",
+    }),
+    [camera, moving],
+  );
 
-  return {
-    camera,
-    panning,
-    worldStyle,
-    onWheel,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    apply,
-    fit,
-    zoomBy,
-  };
+  // Un objet neuf a chaque rendu ferait bouger toutes les dependances qui s'y
+  // referent, et relancerait sans cesse les effets qui les surveillent.
+  return useMemo(
+    () => ({
+      camera,
+      panning,
+      worldStyle,
+      onWheel,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      apply,
+      fit,
+      zoomBy,
+    }),
+    [
+      camera,
+      panning,
+      worldStyle,
+      onWheel,
+      onPointerDown,
+      onPointerMove,
+      onPointerUp,
+      apply,
+      fit,
+      zoomBy,
+    ],
+  );
 }
 
 /**
@@ -207,6 +257,8 @@ export function useRememberedCamera(
   const { apply, fit, camera } = viewport;
   //: Cadrage venu du moteur : il ne doit pas etre renvoye tel quel.
   const applied = useRef("");
+  //: La scene deja recadree d'office, pour ne jamais le refaire en boucle.
+  const recadre = useRef("");
 
   useLayoutEffect(() => {
     const element = surface.current;
@@ -232,7 +284,14 @@ export function useRememberedCamera(
       applied.current = signe;
       apply(saved);
     } else {
-      // Premiere visite : on cadre sur ce qui existe, et ce cadrage sera retenu.
+      // Ni premiere visite, ni cadrage utilisable : on cadre sur ce qui existe.
+      //
+      // Une seule fois par scene, imperativement. Recadrer change la camera,
+      // ce qui peut ramener cet effet — et l'on recadrerait a nouveau, sans
+      // fin. C'est ainsi que l'affichage s'interrompait.
+      const marque = `${scenePath}|recadre`;
+      if (recadre.current === marque) return;
+      recadre.current = marque;
       applied.current = "";
       fit(points, element.clientWidth, element.clientHeight);
     }

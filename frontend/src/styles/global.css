@@ -591,8 +591,10 @@ code {
 
 .door__frame {
   position: relative;
-  width: 96px;
-  height: 132px;
+  /* L'echelle choisie pour l'icone. 1 vaut la porte telle qu'elle a ete
+     dessinee ; les autres l'agrandissent sans rien deformer. */
+  width: calc(96px * var(--icone-echelle, 1));
+  height: calc(132px * var(--icone-echelle, 1));
   margin: 0 auto;
   background: linear-gradient(180deg, #1b2c4d 0%, #121d33 100%);
   border: 1px solid var(--line-strong);
@@ -731,8 +733,8 @@ code {
    `contain` la met a l'echelle sans jamais la deformer ni la rogner. Le cerveau,
    lui, a sa taille propre — c'est le seul a echapper a cette regle. */
 .door__badge {
-  width: 96px;
-  height: 132px;
+  width: calc(96px * var(--icone-echelle, 1));
+  height: calc(132px * var(--icone-echelle, 1));
   margin: 0 auto;
   transition: transform var(--slow) var(--ease), filter var(--slow) var(--ease);
 }
@@ -816,8 +818,10 @@ code {
 
 .brain {
   display: block;
-  width: 290px;
-  height: 264px;
+  /* Meme boite que la porte, aux proportions du cerveau : a l'echelle 3 — la
+     sienne par defaut — il retrouve exactement le double de la porte. */
+  width: calc(145px * var(--icone-echelle, 2));
+  height: calc(132px * var(--icone-echelle, 2));
   margin: 0 auto;
   overflow: visible;
   transition: transform var(--slow) var(--ease), filter var(--slow) var(--ease);
@@ -1385,4 +1389,99 @@ code {
   font-size: 11px;
   line-height: 1.5;
   color: var(--text-faint);
+}
+
+/* ============================================================
+   La panne — quand le rendu s'interrompt, dire quoi plutot que rien
+   ============================================================ */
+
+.panne {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  padding: 24px;
+  background: var(--bg-deep);
+}
+
+.panne__boite {
+  width: min(560px, 90vw);
+  padding: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.panne__titre {
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.panne__mot {
+  margin-bottom: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.panne__detail {
+  max-height: 180px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-deep);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  /* Un message d'erreur se lit et se recopie : c'est la seule zone de la
+     page ou la selection reste permise en dehors des notes. */
+  user-select: text;
+}
+
+.panne__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.panne__reprendre,
+.panne__recharger {
+  padding: 9px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease);
+}
+
+.panne__reprendre:hover,
+.panne__recharger:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.panne__recharger {
+  border-color: transparent;
+  background: var(--accent-deep);
+  color: var(--text);
+}
+
+/* Une mise a jour qui attend : le bouton se distingue de la simple recherche. */
+.settings__action--maj {
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.settings__action--maj:hover {
+  filter: brightness(1.12);
 }

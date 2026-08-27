@@ -18,6 +18,9 @@ interface Props {
   onContextMenu: (event: React.MouseEvent) => void;
 }
 
+/** Ce que valent les trois tailles, rapportees a l'echelle d'une porte. */
+const ECHELLES: Record<number, number> = { 1: 1, 2: 1.25, 3: 2 };
+
 export function DoorNode({
   door,
   scale,
@@ -57,7 +60,15 @@ export function DoorNode({
     <div
       data-node-id={door.id}
       className={`node door door--${door.icon === "cerveau" ? "cerveau" : door.icon === "porte" ? "porte" : "icone"}${dragging ? " is-dragging" : ""}${drop.over ? " is-drop-target" : ""}`}
-      style={{ transform: `translate(${door.position.x}px, ${door.position.y}px)` }}
+      style={
+        {
+          transform: `translate(${door.position.x}px, ${door.position.y}px)`,
+          // Trois echelles au choix pour l'icone : celle de la porte, un quart
+          // de plus, ou le double. Une seule valeur, que les trois apparences
+          // — porte, cerveau, icone apportee — suivent chacune a sa maniere.
+          "--icone-echelle": ECHELLES[door.icon_size] ?? 1,
+        } as React.CSSProperties
+      }
       onContextMenu={onContextMenu}
       onDoubleClick={onEnter}
       {...handlers}
@@ -71,13 +82,19 @@ export function DoorNode({
         onPointerDown={onStartLink}
       />
 
-      <div className="door__vision">
-        {door.cover ? (
+      {/* Une porte sans vision ne montre pas de cadre vide : un rectangle gris
+          marque « vision » n'apprend rien et encombre l'espace. Le cadre
+          reapparait le temps qu'une image survole la porte, pour dire ou la
+          lacher. */}
+      {door.cover ? (
+        <div className="door__vision">
           <img src={api.fileUrl(door.cover)} alt="" draggable={false} />
-        ) : (
-          <div className="door__vision-empty">{drop.over ? "lacher ici" : "vision"}</div>
-        )}
-      </div>
+        </div>
+      ) : drop.over ? (
+        <div className="door__vision">
+          <div className="door__vision-empty">lacher ici</div>
+        </div>
+      ) : null}
 
       {door.icon === "cerveau" ? (
         <BrainIcon id={door.id} />

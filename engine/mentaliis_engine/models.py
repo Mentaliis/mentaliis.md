@@ -40,6 +40,10 @@ class Door(BaseModel):
     cover: str | None = None  # image de couverture, chemin relatif au Vault
     #: Porte a franchir, ou cerveau : deux facons de se representer un dossier.
     icon: DoorIcon = "porte"
+    #: Trois echelles : 1 celle de la porte, 2 un quart de plus, 3 le double.
+    #: Le cerveau naît en 3 — il represente la connaissance, et le premier
+    #: reglage voulu pour lui etait deja le double de la porte.
+    icon_size: int = Field(default=1, ge=1, le=3)
     note_count: int = 0
     door_count: int = 0
 
@@ -212,6 +216,10 @@ class LinkRequest(BaseModel):
 
     source: str
     target: str
+
+
+class SetIconSizeRequest(BaseModel):
+    size: int = Field(ge=1, le=3)
 
 
 class SetIconRequest(BaseModel):

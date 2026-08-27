@@ -1,0 +1,41 @@
+MENTALIIS — CONDITIONS D'UTILISATION
+
+Copyright (c) 2026 AJTVIRTUAL - AMILCAR JOAO
+Tous droits reserves.
+
+
+CE QUE FAIT MENTALIIS DE VOS DONNEES
+
+Mentaliis travaille uniquement sur votre machine. Vos notes, vos images et vos
+positions sont des fichiers ordinaires, ranges dans le dossier que vous avez
+choisi comme Vault. Rien n'est envoye sur un serveur, rien n'est analyse, rien
+n'est conserve ailleurs que chez vous.
+
+Le logiciel se connecte a Internet pour une seule chose : verifier, au
+demarrage, s'il existe une version plus recente de lui-meme. Cette verification
+n'emporte aucune donnee vous concernant. Aucune mise a jour ne s'installe sans
+que vous l'ayez acceptee.
+
+
+DROIT D'USAGE
+
+Vous pouvez installer et utiliser Mentaliis sur les machines qui vous
+appartiennent. Le logiciel, son code et son apparence restent la propriete de
+AJTVIRTUAL - AMILCAR JOAO.
+
+Il n'est pas permis de revendre le logiciel, de le redistribuer sous un autre
+nom, ni d'en retirer les mentions d'auteur.
+
+
+ABSENCE DE GARANTIE
+
+Mentaliis est fourni en l'etat, sans garantie d'aucune sorte. L'auteur ne peut
+etre tenu responsable d'une perte de donnees. Vos notes etant de simples
+fichiers sur votre disque, sauvegardez votre Vault comme vous sauvegardez le
+reste de vos documents.
+
+
+---------------------------------------------------------------------------
+Ce texte est un point de depart, redige pour que l'installeur ait quelque
+chose de clair a montrer. Faites-le relire si Mentaliis doit etre distribue
+au-dela de vos propres machines.

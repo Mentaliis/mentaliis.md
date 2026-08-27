@@ -194,6 +194,30 @@ export function SceneView({
     [moveLocal],
   );
 
+  /**
+   * Ramene tout a l'ecran, au clavier comme au bouton.
+   *
+   * C'est le chemin de retour : si le cadrage s'egare — un dossier ouvert dont
+   * les elements sont loin, une camera heritee d'ailleurs — plus rien n'est
+   * visible, pas meme le bouton qu'il faudrait viser. Ctrl+0 s'en charge.
+   */
+  const recentrer = useCallback(() => {
+    const element = surface.current;
+    if (!element) return;
+    viewport.fit([...doors, ...notes, ...visuels].map((item) => item.position), element.clientWidth, element.clientHeight);
+  }, [viewport, doors, notes, visuels]);
+
+  useEffect(() => {
+    const auClavier = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+        event.preventDefault();
+        recentrer();
+      }
+    };
+    window.addEventListener("keydown", auClavier);
+    return () => window.removeEventListener("keydown", auClavier);
+  }, [recentrer]);
+
   /** Zoome autour du centre de la vue, pas du coin. */
   const { zoomBy } = viewport;
   const zoom = useCallback(
@@ -247,6 +271,25 @@ export function SceneView({
               label: "Changer d'icone",
               action: () =>
                 setPicking({ kind: "icone", id, subject: name, current: door.icon }),
+            },
+            {
+              label: "Taille de l'icone",
+              submenu: [1, 2, 3].map((taille) => ({
+                label: [
+                  "1 — a l'echelle de la porte",
+                  "2 — un quart de plus",
+                  "3 — le double",
+                ][taille - 1],
+                checked: door.icon_size === taille,
+                action: async () => {
+                  try {
+                    await api.setIconSize(id, taille);
+                    onSceneChanged();
+                  } catch (problem) {
+                    onError((problem as Error).message);
+                  }
+                },
+              })),
             },
             {
               label: door.cover ? "Changer l'image de vision" : "Choisir une image de vision",
@@ -453,16 +496,8 @@ export function SceneView({
         </button>
         <button
           type="button"
-          title="Tout voir"
-          onClick={() => {
-            const element = surface.current;
-            if (!element) return;
-            viewport.fit(
-              [...doors, ...notes].map((item) => item.position),
-              element.clientWidth,
-              element.clientHeight,
-            );
-          }}
+          title="Tout voir (Ctrl+0)"
+          onClick={recentrer}
         >
           ⤢
         </button>

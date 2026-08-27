@@ -41,6 +41,8 @@ export interface Door {
   cover: string | null;
   /** Porte a franchir, ou cerveau : deux facons de se representer un dossier. */
   icon: DoorIcon;
+  /** Trois echelles : 1 celle de la porte, 2 un quart de plus, 3 le double. */
+  icon_size: number;
   note_count: number;
   door_count: number;
 }

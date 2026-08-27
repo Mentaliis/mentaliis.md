@@ -71,12 +71,24 @@ export default function App() {
 
   // --- Chargement ---
 
+  // Ce que l'on attend : deux chargements peuvent se chevaucher — on navigue
+  // pendant qu'une scene arrive, ou le disque change au meme instant — et rien
+  // ne garantit qu'ils reviennent dans l'ordre. Une reponse en retard imposerait
+  // alors sa scene ET son cadrage a un tout autre dossier : la camera irait
+  // encadrer un endroit ou il n'y a rien, et l'ecran paraitrait vide.
+  const attendu = useRef("");
+
   const loadScene = useCallback(async () => {
     if (!vault) return;
+    const vise = `${vault.path}|${path}`;
+    attendu.current = vise;
     try {
-      setScene(await api.scene(path));
+      const chargee = await api.scene(path);
+      if (attendu.current !== vise) return;
+      setScene(chargee);
       setError(null);
     } catch (problem) {
+      if (attendu.current !== vise) return;
       setError((problem as Error).message);
     }
   }, [path, vault]);
@@ -448,6 +460,7 @@ export default function App() {
           onClose={() => setShowSettings(false)}
           updateState={updater.state}
           onCheckUpdate={() => void updater.chercher()}
+          onInstallUpdate={() => void updater.installer()}
         />
       )}
 

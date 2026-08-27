@@ -40,6 +40,30 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
     surface,
   );
 
+  /**
+   * Ramene tout a l'ecran, au clavier comme au bouton.
+   *
+   * C'est le chemin de retour : si le cadrage s'egare — un dossier ouvert dont
+   * les elements sont loin, une camera heritee d'ailleurs — plus rien n'est
+   * visible, pas meme le bouton qu'il faudrait viser. Ctrl+0 s'en charge.
+   */
+  const recentrer = useCallback(() => {
+    const element = surface.current;
+    if (!element) return;
+    viewport.fit(Object.values(positions), element.clientWidth, element.clientHeight);
+  }, [viewport, positions]);
+
+  useEffect(() => {
+    const auClavier = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "0") {
+        event.preventDefault();
+        recentrer();
+      }
+    };
+    window.addEventListener("keydown", auClavier);
+    return () => window.removeEventListener("keydown", auClavier);
+  }, [recentrer]);
+
   /** Zoome autour du centre de la vue, pas du coin. */
   const { zoomBy } = viewport;
   const zoom = useCallback(
@@ -182,7 +206,7 @@ export function ConstellationView({ data, activeNoteId, onEnterDoor, onOpenNote 
           onClick={() => {
             const element = surface.current;
             if (!element) return;
-            viewport.fit(Object.values(positions), element.clientWidth, element.clientHeight);
+            recentrer();
           }}
         >
           ⤢

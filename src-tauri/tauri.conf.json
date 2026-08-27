@@ -56,8 +56,39 @@
     "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "installer/icon.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "languages": [
+          "French"
+        ],
+        "displayLanguageSelector": false,
+        "startMenuFolder": "Mentaliis"
       }
+    },
+    "licenseFile": "installer/LICENCE.txt",
+    "copyright": "© 2026 AJTVIRTUAL - AMILCAR JOAO",
+    "publisher": "AJTVIRTUAL - AMILCAR JOAO",
+    "homepage": "https://github.com/Mentaliis/mentaliis.md",
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "background": "installer/dmg-fond.png",
+        "windowSize": {
+          "width": 540,
+          "height": 380
+        },
+        "appPosition": {
+          "x": 150,
+          "y": 205
+        },
+        "applicationFolderPosition": {
+          "x": 390,
+          "y": 205
+        }
+      },
+      "signingIdentity": "-"
     }
   },
   "plugins": {

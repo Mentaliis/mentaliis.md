@@ -18,6 +18,7 @@ interface Props {
   onClose: () => void;
   updateState: UpdateState;
   onCheckUpdate: () => void;
+  onInstallUpdate: () => void;
 }
 
 export function SettingsPanel({
@@ -28,6 +29,7 @@ export function SettingsPanel({
   onClose,
   updateState,
   onCheckUpdate,
+  onInstallUpdate,
 }: Props) {
   // Les parametres ne se referment que par leur croix. Un clic maladroit a
   // cote, ou une touche Echap pressee par reflexe, ne doivent pas faire perdre
@@ -140,14 +142,30 @@ export function SettingsPanel({
             </p>
             <div className="settings__vault">
               <span className="settings__path">{etatDeMaj(updateState)}</span>
-              <button
-                type="button"
-                className="settings__action"
-                onClick={onCheckUpdate}
-                disabled={updateState.etat === "recherche"}
-              >
-                Rechercher maintenant
-              </button>
+              {/* Quand une version attend, on doit pouvoir l'installer d'ici :
+                  aller rechercher le bandeau derriere le panneau serait absurde. */}
+              {updateState.etat === "disponible" ? (
+                <button
+                  type="button"
+                  className="settings__action settings__action--maj"
+                  onClick={onInstallUpdate}
+                >
+                  Installer et relancer
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="settings__action"
+                  onClick={onCheckUpdate}
+                  disabled={
+                    updateState.etat === "recherche" ||
+                    updateState.etat === "telechargement" ||
+                    updateState.etat === "installation"
+                  }
+                >
+                  Rechercher maintenant
+                </button>
+              )}
             </div>
           </section>
         </div>

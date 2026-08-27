@@ -31,9 +31,15 @@ const depot = conf.plugins.updater.endpoints[0]
 const bundle = join(racine, "src-tauri", "target", "release", "bundle");
 
 /** Les paquets que sait produire chaque systeme, et le nom que Tauri leur donne. */
+// Le moteur Python est fige par PyInstaller pour une architecture donnee : un
+// paquet construit sur un Mac Apple Silicon ne tourne pas sur un Mac Intel. On
+// n'annonce donc que l'architecture reellement construite, sous peine de
+// proposer a quelqu'un une mise a jour qui ne demarrera pas chez lui.
+const macCible = process.arch === "arm64" ? "darwin-aarch64" : "darwin-x86_64";
+
 const familles = [
   { dossier: "nsis", suffixe: "-setup.exe", cibles: ["windows-x86_64"] },
-  { dossier: "macos", suffixe: ".app.tar.gz", cibles: ["darwin-x86_64", "darwin-aarch64"] },
+  { dossier: "macos", suffixe: ".app.tar.gz", cibles: [macCible] },
   { dossier: "appimage", suffixe: ".AppImage", cibles: ["linux-x86_64"] },
 ];
 
@@ -82,6 +88,21 @@ if (Object.keys(platforms).length === 0) {
   process.exit(1);
 }
 
+// Si un manifeste est deja la — construit sur l'autre systeme, puis rapporte
+// ici — on ajoute a ce qu'il contient plutot que de l'ecraser. C'est ainsi
+// qu'un seul `latest.json` finit par couvrir Windows et macOS.
+const sortie = join(bundle, "latest.json");
+try {
+  const existant = JSON.parse(readFileSync(sortie, "utf8"));
+  if (existant.version === version && existant.platforms) {
+    for (const [cle, valeur] of Object.entries(existant.platforms)) {
+      if (!platforms[cle]) platforms[cle] = valeur;
+    }
+  }
+} catch {
+  // Pas de manifeste precedent, ou illisible : on part de ce qu'on vient de voir.
+}
+
 const manifeste = {
   version,
   notes: process.argv[2] ?? `Mentaliis ${version}`,
@@ -89,7 +110,6 @@ const manifeste = {
   platforms,
 };
 
-const sortie = join(bundle, "latest.json");
 writeFileSync(sortie, `${JSON.stringify(manifeste, null, 2)}\n`, "utf8");
 console.log(`\nManifeste ecrit : ${sortie}`);
 console.log(`\nPublier avec :\n  gh release create v${version} \\`);

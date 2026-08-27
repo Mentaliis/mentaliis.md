@@ -127,13 +127,21 @@ export function useViewport(initial: Camera = { x: 0, y: 0, scale: 1 }) {
 
   /** Recadre la camera pour que tous les elements tiennent a l'ecran. */
   const fit = useCallback((points: { x: number; y: number }[], width: number, height: number) => {
+    // Une surface pas encore mise en page annonce zero : cadrer dessus placerait
+    // le monde dans le coin superieur gauche, a peu pres tout hors de l'ecran.
+    // Mieux vaut ne rien faire et laisser le cadrage suivant s'en charger.
+    if (!(width > 0) || !(height > 0)) return;
     if (!points.length) {
       setCamera({ x: width / 2, y: height / 2, scale: 1 });
       return;
     }
     const margin = 220;
-    const xs = points.map((point) => point.x);
-    const ys = points.map((point) => point.y);
+    // Une position illisible — un fichier de mise en page abime, un calcul qui
+    // a derape — empoisonnerait tout le cadrage : on l'ecarte.
+    const sains = points.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (!sains.length) return;
+    const xs = sains.map((point) => point.x);
+    const ys = sains.map((point) => point.y);
     const minX = Math.min(...xs) - margin;
     const maxX = Math.max(...xs) + margin;
     const minY = Math.min(...ys) - margin;
@@ -203,7 +211,11 @@ export function useRememberedCamera(
   useLayoutEffect(() => {
     const element = surface.current;
     if (!element) return;
-    if (saved) {
+    // Un cadrage abime — fichier de mise en page corrompu, echelle nulle — ne
+    // doit pas etre applique : il rendrait la scene invisible.
+    const sain =
+      saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) && saved.scale > 0;
+    if (saved && sain) {
       // On compare les valeurs, pas les objets : la scene se recharge souvent, et
       // chaque rechargement rapporte un cadrage neuf mais identique. Le reappliquer
       // annulerait un deplacement en cours, pas encore enregistre.
@@ -238,5 +250,10 @@ function signature(camera: Camera) {
 }
 
 function clamp(value: number, min: number, max: number) {
+  // `Math.min(max, Math.max(min, NaN))` vaut NaN : les bornes ne rattrapent
+  // rien. Or un seul NaN dans la camera rend `transform: scale(NaN)`, que le
+  // navigateur refuse — le calque entier cesse d'etre peint, et l'ecran devient
+  // noir alors que tout est pourtant en place.
+  if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
 }

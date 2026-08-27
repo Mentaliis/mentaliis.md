@@ -34,6 +34,7 @@ from ..models import (
     SetCameraRequest,
     SetCoverRequest,
     SetIconRequest,
+    SetIconSizeRequest,
     SetImagesRequest,
     SetSizeRequest,
     Settings,
@@ -232,6 +233,12 @@ def post_door(payload: CreateDoorRequest):
 @router.put("/door/cover", response_model=Door)
 def put_door_cover(payload: SetCoverRequest, id: str = Query(...)):
     return _guard(_vault().set_cover, id, payload.cover)
+
+
+@router.put("/door/icon-size", response_model=Door)
+def put_door_icon_size(payload: SetIconSizeRequest, id: str = Query(...)):
+    """Trois echelles pour l'icone d'une porte : 1, 2 ou 3."""
+    return _guard(_vault().set_icon_size, id, payload.size)
 
 
 @router.put("/door/icon", response_model=Door)

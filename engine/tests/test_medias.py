@@ -32,10 +32,17 @@ def test_la_reserve_porte_un_nom_impose(vault):
     assert vault.media().icons_folder == ".MEDIAS/.SVG"
 
 
-def test_une_reserve_absente_est_signalee(tmp_path):
+def test_un_dossier_quelconque_devient_un_vault_complet(tmp_path):
+    """Ouvrir un dossier suffit : la reserve est posee au meme instant.
+
+    Elle portait autrefois la possibilite d'etre absente, et l'interface devait
+    l'expliquer. Les noms `.MEDIAS` et `.SVG` etant imposes, autant les creer.
+    """
     (tmp_path / "Projets").mkdir()
     reserve = Vault(tmp_path).media()
-    assert reserve.exists is False
+    assert reserve.exists is True
+    assert reserve.icons_exist is True
+    # Creee, mais vide : ce qu'on y range n'appartient qu'a son proprietaire.
     assert reserve.images == [] and reserve.icons == []
 
 

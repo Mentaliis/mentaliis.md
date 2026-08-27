@@ -125,6 +125,12 @@ export const api = {
   // --- Portes ---
   createDoor: (parent: string, name: string) =>
     request<Door>("/door", { method: "POST", ...body({ parent, name }) }),
+  setIconSize: (id: string, size: number) =>
+    request<Door>(`/door/icon-size?id=${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ size }),
+    }),
+
   setIcon: (id: string, icon: DoorIcon) =>
     request<Door>(`/door/icon?id=${encodeURIComponent(id)}`, {
       method: "PUT",

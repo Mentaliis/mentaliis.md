@@ -85,6 +85,13 @@ class Vault:
         self.layout = Layout(root)
         (root / VAULT_META_DIR).mkdir(exist_ok=True)
 
+        # La reserve de medias et son dossier d'icones portent des noms imposes,
+        # et toute l'application les suppose presents. Les creer a l'ouverture
+        # evite d'avoir a expliquer leur existence : on ouvre un dossier, il est
+        # deja un Vault. On ne touche a rien s'ils sont deja la — pas meme pour
+        # verifier leur contenu, qui appartient a celui qui l'a range.
+        (root / MEDIAS_DIR / ICONS_DIR).mkdir(parents=True, exist_ok=True)
+
         # Import tardif : l'index a besoin du type Vault, defini ici.
         from ..index import LinkIndex
 
@@ -361,6 +368,7 @@ class Vault:
             position=Position(x=stored.get("x", 0.0), y=stored.get("y", 0.0)),
             cover=stored.get("cover"),
             icon=_icon_of(stored),
+            icon_size=_icon_size_of(stored),
             note_count=note_count,
             door_count=door_count,
         )
@@ -585,6 +593,19 @@ class Vault:
             self._check_icon(icon)
         # "porte" etant la valeur par defaut, on ne l'ecrit pas.
         self.layout.set_field(door_id, "icon", None if icon == "porte" else icon)
+        parent = Path(door_id).parent.as_posix().strip(".")
+        return self._door(folder, parent=parent)
+
+    def set_icon_size(self, door_id: str, size: int) -> Door:
+        """Change l'echelle de l'icone d'une porte, sans toucher au dossier."""
+        if size not in (1, 2, 3):
+            raise VaultError(f"Taille d'icone inconnue : {size}")
+        folder = self.resolve(door_id)
+        if not folder.is_dir():
+            raise VaultError(f"Cette porte n'existe pas : {door_id}")
+        # On n'ecrit que ce qui s'ecarte du reglage naturel de cette apparence.
+        naturelle = _taille_naturelle(_icon_of(self.layout.get(door_id)))
+        self.layout.set_field(door_id, "icon_size", None if size == naturelle else size)
         parent = Path(door_id).parent.as_posix().strip(".")
         return self._door(folder, parent=parent)
 
@@ -825,6 +846,23 @@ def _icon_of(stored: dict) -> str:
     if icon in BUILTIN_ICONS:
         return icon
     return icon if icon.startswith(f"{MEDIAS_DIR}/{ICONS_DIR}/") else "porte"
+
+
+def _taille_naturelle(icon: str) -> int:
+    """L'echelle qu'une apparence prend d'elle-meme, faute de choix explicite.
+
+    Le cerveau represente la connaissance et ce qui fait tenir le reste : il
+    naît au double de la porte. Tout le reste naît a l'echelle de la porte.
+    """
+    return 3 if icon == "cerveau" else 1
+
+
+def _icon_size_of(stored: dict) -> int:
+    """Echelle retenue, en se mefiant d'un layout ecrit a la main."""
+    brut = stored.get("icon_size")
+    if isinstance(brut, bool) or not isinstance(brut, int) or brut not in (1, 2, 3):
+        return _taille_naturelle(_icon_of(stored))
+    return brut
 
 
 def _taille(valeur: object) -> int:

@@ -172,7 +172,7 @@ def test_import_ne_remplace_jamais_un_fichier_existant(vault):
 
 
 def test_images_accrochees_a_une_note(vault):
-    (vault.root / ".MEDIAS").mkdir()
+    # La reserve existe des l'ouverture du Vault : rien a creer ici.
     depose = vault.import_file("photo.png", b"a", ".MEDIAS")
     image = AttachedImage(path=depose, position=Position(x=90, y=-70), caption="cap")
     vault.set_images("orpheline.md", [image])

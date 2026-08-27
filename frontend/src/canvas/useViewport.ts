@@ -215,7 +215,15 @@ export function useRememberedCamera(
     // doit pas etre applique : il rendrait la scene invisible.
     const sain =
       saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) && saved.scale > 0;
-    if (saved && sain) {
+    // Et surtout : un cadrage peut etre parfaitement valide et ne rien montrer.
+    // Une fenetre redimensionnee, un deplacement qui a derape, un ecran change
+    // de taille — et l'on rouvre sa porte sur un espace vide, sans savoir ou
+    // sont passees ses choses. Ce cadrage-la ne merite pas d'etre restitue.
+    const montreQuelqueChose =
+      sain && saved
+        ? montreAuMoinsUnPoint(saved, points, element.clientWidth, element.clientHeight)
+        : false;
+    if (saved && sain && montreQuelqueChose) {
       // On compare les valeurs, pas les objets : la scene se recharge souvent, et
       // chaque rechargement rapporte un cadrage neuf mais identique. Le reappliquer
       // annulerait un deplacement en cours, pas encore enregistre.
@@ -233,6 +241,30 @@ export function useRememberedCamera(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apply, fit, scenePath, saved, surface]);
 
+  // Redimensionner la fenetre peut faire sortir toute la scene du champ : le
+  // cadrage n'a pas bouge, mais le cadre, lui, a change de taille. On ne
+  // recadre que dans ce cas-la — jamais tant qu'il reste quelque chose a voir,
+  // sous peine de defaire le cadrage choisi a chaque coup de souris sur le bord.
+  useEffect(() => {
+    const element = surface.current;
+    if (!element) return;
+    let minuterie = 0;
+    const auRedimensionnement = () => {
+      window.clearTimeout(minuterie);
+      minuterie = window.setTimeout(() => {
+        const cadre = surface.current;
+        if (!cadre) return;
+        if (montreAuMoinsUnPoint(camera, points, cadre.clientWidth, cadre.clientHeight)) return;
+        fit(points, cadre.clientWidth, cadre.clientHeight);
+      }, 250);
+    };
+    window.addEventListener("resize", auRedimensionnement);
+    return () => {
+      window.clearTimeout(minuterie);
+      window.removeEventListener("resize", auRedimensionnement);
+    };
+  }, [camera, fit, points, surface]);
+
   // Enregistre le cadrage un peu apres le dernier geste, pas a chaque image.
   useEffect(() => {
     const current = signature(camera);
@@ -243,6 +275,30 @@ export function useRememberedCamera(
     }, 600);
     return () => window.clearTimeout(timer);
   }, [camera, scenePath]);
+}
+
+/**
+ * Ce cadrage laisse-t-il voir au moins un element ?
+ *
+ * Une scene vide n'a rien a montrer : elle repond oui, pour ne pas recadrer sans
+ * cesse. Sinon, il suffit qu'un seul element tombe dans la fenetre.
+ */
+function montreAuMoinsUnPoint(
+  camera: Camera,
+  points: { x: number; y: number }[],
+  width: number,
+  height: number,
+): boolean {
+  if (!points.length) return true;
+  if (!(width > 0) || !(height > 0)) return true;
+  // Une marge genereuse : un element a moitie sorti reste un element trouvable.
+  const marge = 120;
+  return points.some((point) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return false;
+    const x = point.x * camera.scale + camera.x;
+    const y = point.y * camera.scale + camera.y;
+    return x > -marge && x < width + marge && y > -marge && y < height + marge;
+  });
 }
 
 function signature(camera: Camera) {

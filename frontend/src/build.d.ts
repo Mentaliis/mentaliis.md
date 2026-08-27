@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 /** Valeurs figees au moment de la construction, par `vite.config.ts`. */
 
 /** Le numero de version de cette edition, lu dans le package.json de la racine. */

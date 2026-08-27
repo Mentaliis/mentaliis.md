@@ -55,3 +55,34 @@ def test_le_dossier_est_cree_s_il_manque(tmp_path, monkeypatch):
     monkeypatch.delenv("MENTALIIS_CONFIG_DIR", raising=False)
     monkeypatch.delattr(sys, "frozen", raising=False)
     assert config.app_data_dir().is_dir()
+
+
+# --- Le port ---
+
+
+def test_les_deux_moteurs_n_ecoutent_pas_au_meme_endroit(monkeypatch):
+    """Sinon travailler sur Mentaliis pendant que Mentaliis est ouvert les fait
+    se disputer le port : le second meurt, et son interface se met a parler au
+    premier — donc au Vault de quelqu'un d'autre."""
+    import importlib
+
+    monkeypatch.delenv("MENTALIIS_ENGINE_PORT", raising=False)
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    livre = importlib.reload(config).PORT
+
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    developpement = importlib.reload(config).PORT
+
+    assert livre != developpement
+    assert livre == config.PORT_LIVRE
+    assert developpement == config.PORT_DEVELOPPEMENT
+
+
+def test_une_variable_d_environnement_impose_le_port(monkeypatch):
+    import importlib
+
+    monkeypatch.setenv("MENTALIIS_ENGINE_PORT", "9999")
+    assert importlib.reload(config).PORT == 9999
+    monkeypatch.delenv("MENTALIIS_ENGINE_PORT")
+    importlib.reload(config)

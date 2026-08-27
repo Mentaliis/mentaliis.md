@@ -23,7 +23,10 @@ import type {
   VaultInfo,
 } from "./types";
 
-const HOST = "127.0.0.1:8756";
+// Le moteur de developpement et celui de l'application livree n'ecoutent pas
+// au meme endroit : les deux peuvent ainsi tourner cote a cote sans que l'un
+// se mette a travailler dans le Vault de l'autre.
+const HOST = import.meta.env.DEV ? "127.0.0.1:8757" : "127.0.0.1:8756";
 const BASE = `http://${HOST}/api`;
 export const EVENTS_URL = `ws://${HOST}/api/events`;
 

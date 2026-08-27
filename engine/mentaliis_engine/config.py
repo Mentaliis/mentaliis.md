@@ -8,7 +8,20 @@ from pathlib import Path
 
 # Le moteur n'ecoute QUE sur la boucle locale : inaccessible depuis le reseau.
 HOST = "127.0.0.1"
-PORT = int(os.environ.get("MENTALIIS_ENGINE_PORT", "8756"))
+
+#: Le moteur livre et celui de developpement n'ecoutent pas au meme endroit.
+#: Sans cela, travailler sur Mentaliis pendant que Mentaliis est ouvert fait se
+#: disputer le port aux deux moteurs : le second ne peut pas s'attacher, meurt,
+#: et son interface se met a parler au premier — donc au Vault de quelqu'un
+#: d'autre. Les deux peuvent desormais tourner cote a cote.
+PORT_LIVRE = 8756
+PORT_DEVELOPPEMENT = 8757
+PORT = int(
+    os.environ.get(
+        "MENTALIIS_ENGINE_PORT",
+        str(PORT_LIVRE if getattr(sys, "frozen", False) else PORT_DEVELOPPEMENT),
+    )
+)
 
 # Dossier cache place a la racine de chaque Vault (layout spatial, cache d'index).
 VAULT_META_DIR = ".mentaliis"

@@ -17,7 +17,13 @@ import { fileURLToPath } from "node:url";
 
 const racine = join(dirname(fileURLToPath(import.meta.url)), "..");
 const conf = JSON.parse(readFileSync(join(racine, "src-tauri", "tauri.conf.json"), "utf8"));
-const version = conf.version;
+
+// Le numero de version n'a qu'une source de verite : le package.json de la
+// racine. `tauri.conf.json` s'y refere par un chemin plutot que de recopier le
+// numero, ce qui evite qu'ils divergent en silence — et que l'updater se taise.
+const version = conf.version.endsWith(".json")
+  ? JSON.parse(readFileSync(join(racine, "src-tauri", conf.version), "utf8")).version
+  : conf.version;
 const depot = conf.plugins.updater.endpoints[0]
   .replace("/releases/latest/download/latest.json", "")
   .replace(/^https:\/\/github\.com\//, "");

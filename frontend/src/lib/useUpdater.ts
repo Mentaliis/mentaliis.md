@@ -17,7 +17,10 @@ export type UpdateState =
   | { etat: "disponible"; version: string; notes: string }
   | { etat: "telechargement"; progres: number }
   | { etat: "installation" }
-  | { etat: "echec"; raison: string };
+  | { etat: "echec"; raison: string }
+  /** Une recherche automatique qui n'a pas abouti : rien a l'ecran, mais
+   *  les parametres savent le dire a qui vient s'en enquerir. */
+  | { etat: "muet"; raison: string };
 
 /** Vrai seulement dans la fenetre native : ailleurs, il n'y a rien a mettre a jour. */
 function dansLApplication(): boolean {
@@ -65,8 +68,11 @@ export function useUpdater() {
       } catch (error) {
         trouvee.current = null;
         // Une recherche automatique qui echoue — machine hors ligne, page des
-        // versions injoignable — ne doit rien montrer du tout.
-        poser(silencieux ? { etat: "repos" } : { etat: "echec", raison: String(error) });
+        // versions injoignable — ne doit rien interrompre. Elle laisse toutefois
+        // une trace : sans cela, impossible de distinguer « tout va bien » de
+        // « la recherche n'a jamais abouti ».
+        const raison = String(error);
+        poser(silencieux ? { etat: "muet", raison } : { etat: "echec", raison });
       }
     },
     [poser],

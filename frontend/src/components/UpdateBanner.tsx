@@ -14,8 +14,15 @@ interface Props {
 }
 
 export function UpdateBanner({ state, onInstall, onDismiss }: Props) {
-  // Les etats muets : rien a montrer tant qu'il n'y a rien a dire.
-  if (state.etat === "repos" || state.etat === "recherche" || state.etat === "a-jour") {
+  // Les etats muets : rien a montrer tant qu'il n'y a rien a dire. Une
+  // recherche automatique qui echoue en fait partie — elle se raconte dans les
+  // parametres, pas en travers de l'ecran.
+  if (
+    state.etat === "repos" ||
+    state.etat === "recherche" ||
+    state.etat === "a-jour" ||
+    state.etat === "muet"
+  ) {
     return null;
   }
 

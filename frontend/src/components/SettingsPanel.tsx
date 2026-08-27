@@ -172,6 +172,8 @@ function etatDeMaj(state: UpdateState): string {
       return "Installation…";
     case "echec":
       return "Recherche impossible pour le moment.";
+    case "muet":
+      return "La recherche du demarrage n'a pas abouti.";
     default:
       return "Aucune recherche depuis l'ouverture.";
   }

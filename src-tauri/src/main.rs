@@ -23,6 +23,9 @@ fn main() {
             app.manage(handle);
             Ok(())
         })
+        // L'interface doit pouvoir arreter le moteur avant qu'une mise a jour
+        // ne remplace les fichiers qu'il tient ouverts.
+        .invoke_handler(tauri::generate_handler![engine::arreter_moteur])
         .build(tauri::generate_context!())
         .expect("erreur au demarrage de Mentaliis")
         .run(|app, event| {

@@ -78,6 +78,14 @@ export function useUpdater() {
     if (!mise) return;
     poser({ etat: "telechargement", progres: 0 });
     try {
+      // Le moteur doit mourir avant que l'installeur ne touche a son dossier.
+      // Sous Windows, la mise a jour met fin a l'application par un chemin qui
+      // ne passe pas par l'arret ordinaire : sans cet appel, le moteur survit,
+      // garde ses bibliotheques ouvertes, et l'installation s'arrete net sur
+      // « Error opening file for writing ».
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("arreter_moteur");
+
       let total = 0;
       let recu = 0;
       await mise.downloadAndInstall((evenement: { event: string; data?: never }) => {

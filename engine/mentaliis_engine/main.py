@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .api import router
 from .config import HOST, PORT
+from .parent import surveiller
 from .vault import open_vault
 from .vault.vault import last_vault
 from .watcher import watcher
@@ -73,6 +74,8 @@ app.include_router(router, prefix="/api")
 
 
 def run() -> None:
+    # Le moteur s'en va avec l'application qui l'a lance.
+    surveiller()
     uvicorn.run(app, host=HOST, port=PORT, log_level="info")
 
 

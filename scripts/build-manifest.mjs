@@ -47,7 +47,22 @@ for (const { dossier, suffixe, cibles } of familles) {
     // Ce systeme n'a pas ete construit sur cette machine : c'est normal.
     continue;
   }
-  const paquet = fichiers.find((nom) => nom.endsWith(suffixe));
+  // Les constructions precedentes laissent leurs paquets sur place. Sans exiger
+  // le numero de version dans le nom, on publierait un manifeste qui annonce la
+  // nouvelle version en pointant vers l'ancien fichier — et la mise a jour
+  // echouerait chez tout le monde, signature a l'appui.
+  const paquets = fichiers.filter((nom) => nom.endsWith(suffixe));
+  const paquet = paquets.find((nom) => nom.includes(version));
+  if (paquets.length > 0 && !paquet) {
+    console.error(
+      [
+        `Aucun paquet ${suffixe} en version ${version} dans ${dossier}/.`,
+        `Trouve : ${paquets.join(", ")}`,
+        "Lancez `npm run build` apres avoir monte le numero de version.",
+      ].join(String.fromCharCode(10)),
+    );
+    process.exit(1);
+  }
   const signature = fichiers.find((nom) => nom === `${paquet}.sig`);
   if (!paquet || !signature) continue;
 

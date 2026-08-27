@@ -302,6 +302,15 @@ body:has(.rail__grip.is-dragging) * {
 }
 
 /* L'en-tete suit la meme colonne que le texte : rien ne flotte de travers. */
+/* La colonne d'ecriture ne se centre plus : elle se pose pres de la bande de
+   gauche, avec une gouttiere qui laisse respirer sans eloigner. Centree, elle
+   rejetait le titre au milieu de l'ecran, loin de la liste des notes a laquelle
+   il se rapporte — et un grand ecran ne faisait qu'aggraver la distance.
+   La poignee « + » vit dans cette gouttiere : elle doit y tenir. */
+:root {
+  --ecriture-gouttiere: 120px;
+}
+
 .editor__head {
   display: flex;
   gap: 16px;
@@ -309,8 +318,11 @@ body:has(.rail__grip.is-dragging) * {
   justify-content: space-between;
   width: 100%;
   max-width: calc(78ch + 56px);
-  padding: 14px 28px;
-  margin: 0 auto;
+  /* Plus d'air au-dessus : le titre ne doit pas etre colle aux onglets. */
+  padding: 30px 28px 14px;
+  margin-right: auto;
+  /* Le remplissage de 28px place le texte du titre exactement sur la colonne. */
+  margin-left: calc(var(--ecriture-gouttiere) - 28px);
 }
 
 .editor__identity {
@@ -323,13 +335,16 @@ body:has(.rail__grip.is-dragging) * {
 /* Le titre de la note, affiche une seule fois, a la taille d'un grand titre.
    Il est fige : on ne le modifie que par le crayon, jamais par megarde. */
 .editor__title {
-  overflow: hidden;
   font-size: calc(30px * var(--editor-scale, 1));
   font-weight: 650;
   line-height: 1.25;
   letter-spacing: -0.01em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Un titre s'affiche en entier, toujours. Il passe a la ligne plutot que de
+     se laisser couper : un nom tronque par des points de suspension ne dit plus
+     de quoi la note parle. Un mot interminable finit meme par se rompre, faute
+     de quoi il deborderait de la colonne. */
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .editor__rename {
@@ -438,11 +453,11 @@ body:has(.rail__grip.is-dragging) * {
    le texte, puisqu'elle vit en dehors de la colonne. */
 .editor__handle {
   position: absolute;
-  left: 50%;
+  /* Dans la gouttiere, juste devant la colonne de texte. */
+  left: calc(var(--ecriture-gouttiere) - 40px);
   z-index: 8;
   display: flex;
   align-items: flex-start;
-  margin-left: calc(-39ch - 62px);
   /* Le decalage vertical passe par `translate` et non `transform`, que
      l'animation d'apparition occupe deja. */
   translate: 0 -50%;
@@ -469,7 +484,7 @@ body:has(.rail__grip.is-dragging) * {
 .editor__status {
   justify-content: space-between;
   gap: 12px;
-  padding: 0 28px;
+  padding: 0 28px 0 var(--ecriture-gouttiere);
   font-size: 11px;
   color: var(--text-faint);
 }
@@ -751,7 +766,9 @@ body:has(.rail__grip.is-dragging) * {
 
 .cm-editor .cm-content {
   padding: 10px 0 45vh;
-  margin: 0 auto;
+  /* Meme gouttiere que le titre : le texte se cale exactement dessous. */
+  margin-right: auto;
+  margin-left: var(--ecriture-gouttiere);
   /* La colonne de lecture reste confortable meme en plein ecran. */
   max-width: 78ch;
 }

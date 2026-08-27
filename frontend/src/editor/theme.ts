@@ -23,7 +23,9 @@ export const mentaliisTheme = EditorView.theme(
     ".cm-scroller": {
       overflow: "auto",
       fontFamily: "var(--font-body)",
-      padding: "0 28px",
+      // A droite seulement : a gauche, c'est la gouttiere d'ecriture qui place
+      // la colonne, et un remplissage supplementaire la decalerait du titre.
+      padding: "0 28px 0 0",
     },
     "&.cm-focused": { outline: "none" },
     ".cm-cursor, .cm-dropCursor": {

@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
+import { IconeDossier, IconeNote } from "./Icones";
 import type { Scene } from "../lib/types";
 
 /** Bornes de la bande : assez large pour lire un titre, jamais au point d'ecraser le texte. */
@@ -24,6 +25,8 @@ interface Props {
   onResize: (width: number) => void;
   /** Au relachement : la largeur est enregistree. */
   onResizeEnd: (width: number) => void;
+  /** Repliee : on ne veut plus voir que la note. */
+  cachee: boolean;
 }
 
 export function Rail({
@@ -36,6 +39,7 @@ export function Rail({
   onCreateNote,
   onResize,
   onResizeEnd,
+  cachee,
 }: Props) {
   const [dragging, setDragging] = useState(false);
   const start = useRef<{ x: number; width: number } | null>(null);
@@ -89,6 +93,8 @@ export function Rail({
     />
   );
 
+  if (cachee) return null;
+
   if (!scene) {
     return (
       <aside className="rail" style={{ width }}>
@@ -118,7 +124,7 @@ export function Rail({
             {scene.doors.map((door) => (
               <li key={door.id}>
                 <button type="button" className="rail__door" onClick={() => onEnterDoor(door.id)}>
-                  <span className="rail__icon" aria-hidden="true" />
+                  <IconeDossier />
                   <span className="rail__label">{door.name}</span>
                 </button>
               </li>
@@ -135,7 +141,8 @@ export function Rail({
                   className={`rail__note${note.id === activeNoteId ? " is-active" : ""}`}
                   onClick={() => onOpenNote(note.id, note.title)}
                 >
-                  {note.title}
+                  <IconeNote />
+                  <span className="rail__label">{note.title}</span>
                 </button>
               </li>
             ))}

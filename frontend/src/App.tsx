@@ -46,6 +46,8 @@ export default function App() {
   const updater = useUpdater();
   /** Largeur suivie pendant le glissement, avant d'etre enregistree. */
   const [railWidth, setRailWidth] = useState<number | null>(null);
+  /** La bande de gauche repliee : plus que la note, et rien d'autre. */
+  const [railCache, setRailCache] = useState(false);
 
   // Attend que le moteur reponde : il peut demarrer un peu apres la fenetre.
   //
@@ -432,6 +434,7 @@ export default function App() {
               scene={scene}
               activeNoteId={active}
               width={railWidth ?? settings.rail_width}
+              cachee={railCache}
               onEnterDoor={enterDoor}
               onGoUp={goUp}
               onOpenNote={openNote}
@@ -445,6 +448,9 @@ export default function App() {
             <NoteEditor
               key={active}
               noteId={active}
+              railCache={railCache}
+              railLargeur={railWidth ?? settings.rail_width}
+              onBasculerRail={() => setRailCache((repliee) => !repliee)}
               reloadToken={noteReload}
               onSaved={refresh}
               onOpenNote={openNote}

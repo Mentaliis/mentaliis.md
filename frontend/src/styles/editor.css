@@ -36,7 +36,6 @@
   font-size: 12.5px;
   color: var(--text-faint);
   cursor: pointer;
-  border-top: 2px solid transparent;
   transition: color var(--fast) var(--ease), background var(--fast) var(--ease);
 }
 
@@ -48,7 +47,6 @@
 .tab.is-active {
   color: var(--text);
   background: var(--bg);
-  border-top-color: var(--accent);
 }
 
 .tab__title {
@@ -239,20 +237,26 @@ body:has(.rail__grip.is-dragging) * {
   background: var(--accent-soft);
 }
 
+/* La note ouverte se signale par son fond et sa couleur, sans barre : un trait
+   de plus n'apprend rien et alourdit une bande deja dense. */
 .rail__note.is-active {
   color: var(--text);
   background: var(--accent-soft);
-  box-shadow: inset 2px 0 0 var(--accent);
 }
 
-/* Une petite porte, pour distinguer un dossier d'une note d'un coup d'oeil. */
-.rail__icon {
+/* Un dossier, une note : deux dessins au trait qui se distinguent d'un coup
+   d'oeil. Ils prennent la couleur du texte qui les entoure, et suivent donc
+   son survol sans qu'on ait a s'en occuper. */
+.icone {
   flex-shrink: 0;
-  width: 8px;
-  height: 11px;
-  background: linear-gradient(180deg, #2c4a85 0%, #16233d 100%);
-  border: 1px solid var(--line-strong);
-  border-radius: 1px;
+  color: var(--text-faint);
+  transition: color var(--fast) var(--ease);
+}
+
+.rail__door:hover .icone,
+.rail__note:hover .icone,
+.rail__note.is-active .icone {
+  color: var(--accent);
 }
 
 .rail__label {
@@ -311,18 +315,24 @@ body:has(.rail__grip.is-dragging) * {
   --ecriture-gouttiere: 120px;
 }
 
+/* L'en-tete tient toute la largeur : le titre reste sur sa colonne, mais les
+   boutons d'ecriture et de lecture s'en vont a l'extreme droite, sous « Retour
+   aux portes ». Ils gardent leur air autour. */
 .editor__head {
   display: flex;
-  gap: 16px;
+  gap: 28px;
   align-items: flex-start;
   justify-content: space-between;
   width: 100%;
-  max-width: calc(78ch + 56px);
   /* Plus d'air au-dessus : le titre ne doit pas etre colle aux onglets. */
-  padding: 30px 28px 14px;
-  margin-right: auto;
-  /* Le remplissage de 28px place le texte du titre exactement sur la colonne. */
-  margin-left: calc(var(--ecriture-gouttiere) - 28px);
+  padding: 30px 28px 14px
+    calc(var(--ecriture-gouttiere) + var(--rail-compense, 0px));
+}
+
+/* Le titre garde la largeur de la colonne de lecture : il passe a la ligne
+   au meme endroit que le texte, et n'ira jamais toucher les boutons. */
+.editor__identity {
+  max-width: 78ch;
 }
 
 .editor__identity {
@@ -345,6 +355,34 @@ body:has(.rail__grip.is-dragging) * {
      de quoi il deborderait de la colonne. */
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+/* Masquer la liste des notes : discret, et net une fois enclenche. */
+.editor__replier {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 6px 8px;
+  color: var(--text-faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    color var(--fast) var(--ease),
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.editor__replier:hover {
+  color: var(--text);
+  background: var(--bg-raised);
+  border-color: var(--line);
+}
+
+.editor__replier.is-active {
+  color: var(--accent);
+  border-color: var(--line-strong);
 }
 
 .editor__rename {
@@ -454,7 +492,7 @@ body:has(.rail__grip.is-dragging) * {
 .editor__handle {
   position: absolute;
   /* Dans la gouttiere, juste devant la colonne de texte. */
-  left: calc(var(--ecriture-gouttiere) - 40px);
+  left: calc(var(--ecriture-gouttiere) + var(--rail-compense, 0px) - 40px);
   z-index: 8;
   display: flex;
   align-items: flex-start;
@@ -484,7 +522,7 @@ body:has(.rail__grip.is-dragging) * {
 .editor__status {
   justify-content: space-between;
   gap: 12px;
-  padding: 0 28px 0 var(--ecriture-gouttiere);
+  padding: 0 28px 0 calc(var(--ecriture-gouttiere) + var(--rail-compense, 0px));
   font-size: 11px;
   color: var(--text-faint);
 }
@@ -768,7 +806,7 @@ body:has(.rail__grip.is-dragging) * {
   padding: 10px 0 45vh;
   /* Meme gouttiere que le titre : le texte se cale exactement dessous. */
   margin-right: auto;
-  margin-left: var(--ecriture-gouttiere);
+  margin-left: calc(var(--ecriture-gouttiere) + var(--rail-compense, 0px));
   /* La colonne de lecture reste confortable meme en plein ecran. */
   max-width: 78ch;
 }

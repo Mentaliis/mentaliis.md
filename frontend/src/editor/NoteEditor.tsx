@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../components/Dialog";
 import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
+import { IconePanneau } from "../components/Icones";
 import { InsertMenu } from "./InsertMenu";
 import type { Insertion } from "./insertions";
 import { lineHandle, type HoveredLine } from "./lineHandle";
@@ -41,6 +42,10 @@ interface Props {
   onRenamed: (oldId: string, newId: string, title?: string) => void;
   /** Titre lu dans le texte, a repercuter sans attendre l'enregistrement. */
   onTitle: (id: string, title: string) => void;
+  /** La bande de gauche est-elle repliee, et de combien faut-il compenser ? */
+  railCache: boolean;
+  railLargeur: number;
+  onBasculerRail: () => void;
 }
 
 export function NoteEditor({
@@ -50,6 +55,9 @@ export function NoteEditor({
   onOpenNote,
   onRenamed,
   onTitle,
+  railCache,
+  railLargeur,
+  onBasculerRail,
 }: Props) {
   const [note, setNote] = useState<Note | null>(null);
   /** Titre lu dans le texte en cours : il change des qu'on modifie le premier titre. */
@@ -375,7 +383,18 @@ export function NoteEditor({
     (links?.backlinks.length ?? 0) + (links?.outgoing.length ?? 0) + (links?.unresolved.length ?? 0);
 
   return (
-    <section className="editor">
+    <section
+      className="editor"
+      style={
+        {
+          // Bande repliee, la colonne d'ecriture ne bouge pas d'un pixel : elle
+          // reprend a son compte la largeur que la bande occupait. Sans cela,
+          // le titre irait se coller au bord de la fenetre, ce qui est
+          // precisement ce qu'on cherchait a eviter en le rapprochant.
+          "--rail-compense": railCache ? `${railLargeur}px` : "0px",
+        } as React.CSSProperties
+      }
+    >
       <header className="editor__head">
         {/* Le titre ne s'affiche qu'une fois, et ne se modifie pas par megarde :
             il faut passer par le crayon qui apparait au survol. */}
@@ -393,6 +412,20 @@ export function NoteEditor({
         </div>
 
         <div className="editor__actions">
+          <button
+            type="button"
+            className={`editor__replier${railCache ? " is-active" : ""}`}
+            onClick={onBasculerRail}
+            title={
+              railCache
+                ? "Reafficher la liste des notes"
+                : "Masquer la liste des notes, pour n'avoir que le texte"
+            }
+            aria-label={railCache ? "Reafficher la liste" : "Masquer la liste"}
+            aria-pressed={railCache}
+          >
+            <IconePanneau ouvert={!railCache} />
+          </button>
           <div className="editor__modes">
             <button
               type="button"

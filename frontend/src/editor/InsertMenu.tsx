@@ -6,7 +6,7 @@
  * la famille demandee.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { api } from "../lib/api";
 import type { MediaFile } from "../lib/types";
 import { ICONS } from "./icons";
@@ -32,6 +32,28 @@ export function InsertMenu({ onInsert, onSymbol, onMedia, onUpload, onClose }: P
   const [filter, setFilter] = useState("");
   const element = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
+  /**
+   * Vers le haut, sauf si l'ecran le coupe.
+   *
+   * La poignee « + » suit la ligne survolee : elle se trouve donc souvent en
+   * bas de l'ecran, ou un menu qui descend serait tronque. On l'ouvre vers le
+   * haut par defaut, et on ne bascule que s'il n'y a pas la place — de sorte
+   * qu'on voit toujours toutes les propositions.
+   */
+  const [versLeHaut, setVersLeHaut] = useState(true);
+
+  useLayoutEffect(() => {
+    const boite = element.current;
+    if (!boite) return;
+    const cadre = boite.getBoundingClientRect();
+    const ancre = boite.parentElement?.getBoundingClientRect();
+    if (!ancre) return;
+    const marge = 12;
+    const placeAuDessus = ancre.top - marge;
+    const placeEnDessous = window.innerHeight - ancre.bottom - marge;
+    // On garde le haut tant qu'il y tient ; sinon on prend le cote le plus large.
+    setVersLeHaut(cadre.height <= placeAuDessus || placeAuDessus >= placeEnDessous);
+  }, [panel, famille, reserve, filter]);
 
   useEffect(() => {
     const dismiss = (event: MouseEvent) => {
@@ -65,7 +87,7 @@ export function InsertMenu({ onInsert, onSymbol, onMedia, onUpload, onClose }: P
 
   if (famille) {
     return (
-      <div ref={element} className="insert insert--media">
+      <div ref={element} className={`insert insert--media${versLeHaut ? " insert--haut" : ""}`}>
         <header className="insert__head">
           <button type="button" className="insert__back" onClick={() => setFamille(null)}>
             ‹ Retour
@@ -129,7 +151,7 @@ export function InsertMenu({ onInsert, onSymbol, onMedia, onUpload, onClose }: P
   // --- Catalogue ---
 
   return (
-    <div ref={element} className="insert">
+    <div ref={element} className={`insert${versLeHaut ? " insert--haut" : ""}`}>
       <nav className="insert__tabs">
         {(["blocs", "symboles"] as Panel[]).map((name) => (
           <button

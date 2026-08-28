@@ -9,6 +9,8 @@
 
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { colorationDuCode, langagesConnus } from "./coloration";
+import { enPixelsDeMiseEnPage } from "./echelle";
+import { syntaxesEtendues } from "./syntaxes";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, placeholder } from "@codemirror/view";
 import {
@@ -22,7 +24,18 @@ import { useDialog } from "../components/Dialog";
 import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
 import { IconePanneau } from "../components/Icones";
+import { FloatingFormatMenu, type ActionDeMiseEnForme } from "./FloatingFormatMenu";
+import {
+  basculerEntourage,
+  basculerPrefixe,
+  blocCourant,
+  effacerLaMiseEnForme,
+  misesEnFormeActives,
+  type Entourage,
+  type Prefixe,
+} from "./formatage";
 import { LanguagePicker } from "./LanguagePicker";
+import { raccourcisDeMiseEnForme } from "./raccourcis";
 import { InsertMenu } from "./InsertMenu";
 import type { Insertion } from "./insertions";
 import { lineHandle, type HoveredLine } from "./lineHandle";
@@ -144,6 +157,18 @@ export function NoteEditor({
   // reference plutot que dans les dependances evite de reconstruire l'editeur pour
   // rien : le reconstruire ramenait le curseur au debut du texte a chaque
   // enregistrement automatique.
+  /**
+   * La barre de mise en forme, quand du texte est selectionne.
+   *
+   * Elle ne s'affiche que sur une selection reelle : poser simplement le
+   * curseur ne doit rien faire surgir devant le texte.
+   */
+  const [barre, setBarre] = useState<{
+    selection: { left: number; right: number; top: number; bottom: number };
+    actives: Set<Entourage>;
+    bloc: Prefixe | null;
+  } | null>(null);
+
   /** Le bloc dont on choisit le langage : ou le reecrire, et ou poser la liste. */
   const [langage, setLangage] = useState<{
     from: number;
@@ -165,16 +190,91 @@ export function NoteEditor({
         from,
         to,
         courant,
+        // Meme conversion que pour la barre : on mesure en pixels d'ecran,
+        // on positionne en pixels de mise en page.
         ancre: place
-          ? { x: Math.round(place.left), y: Math.round(place.bottom + 6) }
+          ? (() => {
+              const p = enPixelsDeMiseEnPage(place);
+              return { x: Math.round(p.left), y: Math.round(p.bottom + 6) };
+            })()
           : { x: 200, y: 200 },
       });
     },
     [],
   );
 
-  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed, onTitle, choisirLangage });
-  latest.current = { onSaved, refreshLinks, followLink, onRenamed, onTitle, choisirLangage };
+  /**
+   * Montre ou cache la barre de mise en forme selon ce qui est selectionne.
+   *
+   * On mesure la selection dans l'editeur plutot qu'avec l'API du navigateur :
+   * CodeMirror connait ses propres positions, et cela reste juste meme quand le
+   * texte defile.
+   */
+  const suivreLaSelection = useCallback((vue: EditorView) => {
+    const { from, to } = vue.state.selection.main;
+    if (from === to) {
+      setBarre(null);
+      return;
+    }
+    const debut = vue.coordsAtPos(from);
+    const fin = vue.coordsAtPos(to);
+    if (!debut || !fin) {
+      setBarre(null);
+      return;
+    }
+    setBarre({
+      selection: {
+        left: Math.min(debut.left, fin.left),
+        right: Math.max(debut.right, fin.right),
+        top: Math.min(debut.top, fin.top),
+        bottom: Math.max(debut.bottom, fin.bottom),
+      },
+      actives: misesEnFormeActives(vue.state),
+      bloc: blocCourant(vue.state),
+    });
+  }, []);
+
+  /** Demande une adresse, puis pose un lien autour de la selection. */
+  const poserUnLien = useCallback(async () => {
+    const vue = view.current;
+    if (!vue) return;
+    const { from, to } = vue.state.selection.main;
+    const texte = vue.state.sliceDoc(from, to);
+    const adresse = await dialog.prompt({
+      title: "Adresse du lien",
+      message: texte ? `Pour « ${texte} ».` : "Le texte du lien sera l'adresse elle-meme.",
+      placeholder: "https://…",
+      confirmLabel: "Poser le lien",
+    });
+    if (!adresse) return;
+    const libelleDuLien = texte || adresse;
+    vue.dispatch({
+      changes: { from, to, insert: `[${libelleDuLien}](${adresse})` },
+      selection: { anchor: from + libelleDuLien.length + adresse.length + 4 },
+    });
+    vue.focus();
+  }, [dialog]);
+
+  const latest = useRef({
+    onSaved,
+    refreshLinks,
+    followLink,
+    onRenamed,
+    onTitle,
+    choisirLangage,
+    suivreLaSelection,
+    poserUnLien,
+  });
+  latest.current = {
+    onSaved,
+    refreshLinks,
+    followLink,
+    onRenamed,
+    onTitle,
+    choisirLangage,
+    suivreLaSelection,
+    poserUnLien,
+  };
 
   useEffect(() => {
     if (!loaded || !host.current) return;
@@ -202,6 +302,8 @@ export function NoteEditor({
     const extensions: Extension[] = [
       history(),
       drawSelection(),
+      // Avant le clavier par defaut : ces raccourcis doivent l'emporter.
+      keymap.of(raccourcisDeMiseEnForme(() => latest.current.poserUnLien())),
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       // `markdownLanguage` en base : c'est lui qui apporte les tableaux,
       // les cases a cocher et le texte barre.
@@ -211,7 +313,13 @@ export function NoteEditor({
       // seul document : pas d'editeur imbrique par bloc, donc pas de curseur ni
       // d'annulation a reconcilier, et l'affichage par fenetre de CodeMirror
       // vaut pour l'ensemble.
-      markdown({ base: markdownLanguage, codeLanguages: langagesConnus }),
+      markdown({
+        base: markdownLanguage,
+        codeLanguages: langagesConnus,
+        // Surlignage, exposant, indice, emoji : ce que le guide markdown
+        // appelle la syntaxe etendue, et que CommonMark ne couvre pas.
+        extensions: syntaxesEtendues,
+      }),
       colorationDuCode(),
       // Taper « ## » devant un titre en change le niveau, sans jamais montrer le code.
       normaliseMarqueurs(),
@@ -237,6 +345,12 @@ export function NoteEditor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) save(update.state.doc.toString());
           if (update.selectionSet) caret.current = update.state.selection.main.head;
+          // La barre de mise en forme suit ce qui est selectionne. Poser
+          // simplement le curseur ne doit rien faire surgir devant le texte :
+          // il faut une vraie selection.
+          if (update.selectionSet || update.docChanged || update.geometryChanged) {
+            latest.current.suivreLaSelection(update.view);
+          }
         }),
       );
     }
@@ -294,10 +408,13 @@ export function NoteEditor({
     }
   }, [dialog, note, onOpenNote]);
 
-  // Ctrl+E bascule entre ecrire et lire, sans quitter la note.
+  // Ctrl+Maj+L bascule entre ecrire et lire, sans quitter la note.
+  //
+  // Ce raccourci occupait Ctrl+E, que tous les editeurs reservent au code en
+  // ligne. Il a donc cede la place, et pris le L de « lecture ».
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "e") {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "l") {
         event.preventDefault();
         setMode((current) => (current === "ecriture" ? "lecture" : "ecriture"));
       }
@@ -473,7 +590,7 @@ export function NoteEditor({
               type="button"
               className={mode === "ecriture" ? "is-active" : ""}
               onClick={() => setMode("ecriture")}
-              title="Ecrire (Ctrl+E)"
+              title="Ecrire (Ctrl+Maj+L)"
             >
               Ecriture
             </button>
@@ -481,7 +598,7 @@ export function NoteEditor({
               type="button"
               className={mode === "lecture" ? "is-active" : ""}
               onClick={() => setMode("lecture")}
-              title="Lire sans pouvoir modifier (Ctrl+E)"
+              title="Lire sans pouvoir modifier (Ctrl+Maj+L)"
             >
               Lecture
             </button>
@@ -583,6 +700,33 @@ export function NoteEditor({
           {note.tags.length > 1 ? "s" : ""}
         </span>
       </footer>
+
+      {barre && (
+        <FloatingFormatMenu
+          selection={barre.selection}
+          actives={barre.actives}
+          bloc={barre.bloc}
+          onClose={() => setBarre(null)}
+          onAction={(action: ActionDeMiseEnForme) => {
+            const vue = view.current;
+            if (!vue) return;
+            if (action.quoi === "lien") {
+              void poserUnLien();
+              return;
+            }
+            const commande =
+              action.quoi === "entourage"
+                ? basculerEntourage(action.nom)
+                : action.quoi === "bloc"
+                  ? basculerPrefixe(action.nom)
+                  : effacerLaMiseEnForme;
+            commande({ state: vue.state, dispatch: (t) => vue.dispatch(t) });
+            vue.focus();
+            // La selection a pu bouger : la barre doit s'y recaler aussitot.
+            suivreLaSelection(vue);
+          }}
+        />
+      )}
 
       {langage && (
         <LanguagePicker

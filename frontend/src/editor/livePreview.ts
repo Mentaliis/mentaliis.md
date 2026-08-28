@@ -54,9 +54,21 @@ const INLINE_CLASS: Record<string, string> = {
   Emphasis: "cm-em",
   Strikethrough: "cm-strike",
   InlineCode: "cm-code",
+  // Syntaxe etendue : hors CommonMark, mais reconnue par la plupart des
+  // applications markdown. Voir docs/markdown-coverage-report.md.
+  Surlignage: "cm-surlignage",
+  Superscript: "cm-exposant",
+  Subscript: "cm-indice",
 };
 
-const MARK_NODES = new Set(["EmphasisMark", "StrikethroughMark", "CodeMark"]);
+const MARK_NODES = new Set([
+  "EmphasisMark",
+  "StrikethroughMark",
+  "CodeMark",
+  "SurlignageMark",
+  "SuperscriptMark",
+  "SubscriptMark",
+]);
 
 /**
  * Vrai si le curseur touche cette portee, marqueurs compris.

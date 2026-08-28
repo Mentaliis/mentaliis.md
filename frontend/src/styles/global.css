@@ -732,20 +732,43 @@ code {
 /* Elle occupe exactement l'encombrement d'une porte, quelle que soit sa forme :
    `contain` la met a l'echelle sans jamais la deformer ni la rogner. Le cerveau,
    lui, a sa taille propre — c'est le seul a echapper a cette regle. */
+/* Seule la hauteur est imposee — celle d'une porte, a l'echelle choisie. La
+   largeur suit les proportions du dessin.
+
+   Une boite rectangulaire fixe paraissait plus reguliere, mais un dessin large
+   et bas — un cerveau, par exemple — s'y logeait au centre en laissant deux
+   larges bandes vides au-dessus et au-dessous. Le nom se retrouvait rejete
+   loin sous l'icone, alors que les portes gardaient le leur tout pres. */
+/* La boite epouse le dessin, au lieu de l'enfermer dans un rectangle de porte.
+
+   Une boite fixe paraissait plus reguliere, mais un dessin large et bas — un
+   cerveau, par exemple — s'y logeait au centre en laissant deux larges bandes
+   vides au-dessus et au-dessous. Le nom se retrouvait rejete loin sous l'icone,
+   alors que les portes gardaient le leur tout pres.
+
+   Deux bornes suffisent : la hauteur d'une porte, et une largeur genereuse pour
+   qu'un dessin tres allonge ne finisse pas par recouvrir ses voisins. Le dessin
+   prend la plus grande taille qui tient dans les deux, sans jamais se deformer,
+   et la boite se referme exactement dessus. */
 .door__badge {
-  width: calc(96px * var(--icone-echelle, 1));
+  /* La hauteur est imposee — celle d'une porte, a l'echelle choisie — et la
+     largeur s'y ajuste. Une image sans dimensions propres, comme un SVG qui
+     n'a qu'un viewBox, n'aurait aucune taille a offrir : c'est cette hauteur
+     qui la lui donne, et le rapport du dessin fait le reste. */
+  display: block;
+  width: fit-content;
   height: calc(132px * var(--icone-echelle, 1));
   margin: 0 auto;
+  line-height: 0;
   transition: transform var(--slow) var(--ease), filter var(--slow) var(--ease);
 }
 
-/* La boite fait exactement la taille d'une porte, et `contain` y loge le dessin
-   sans le deformer. Des `max-*` ne suffiraient pas : une image sans dimensions
-   propres etirerait sa rangee au lieu de s'y plier. */
 .door__badge img {
   display: block;
-  width: 100%;
   height: 100%;
+  width: auto;
+  /* Un dessin tres allonge finirait par recouvrir ses voisins : on le borne. */
+  max-width: calc(264px * var(--icone-echelle, 1));
   object-fit: contain;
 }
 

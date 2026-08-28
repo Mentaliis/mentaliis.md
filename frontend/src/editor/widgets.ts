@@ -323,3 +323,60 @@ function splitRow(line: string): string[] {
     .split("|")
     .map((cell) => cell.trim());
 }
+
+/**
+ * L'etiquette de langage, en tete d'un bloc de code.
+ *
+ * Elle remplace les trois accents graves et le nom du langage : on ne voit
+ * jamais la syntaxe, seulement une pastille indiquant dans quel langage le bloc
+ * est ecrit, et qui s'ouvre pour en changer.
+ */
+export class LanguageWidget extends WidgetType {
+  constructor(
+    /** Le nom lisible, ou null quand le bloc n'annonce aucun langage. */
+    private readonly langage: string | null,
+    /** Ou commence et finit ce qui suit les accents graves, pour le reecrire. */
+    private readonly from: number,
+    private readonly to: number,
+    private readonly onChoisir: (from: number, to: number, courant: string | null) => void,
+  ) {
+    super();
+  }
+
+  eq(other: LanguageWidget) {
+    return other.langage === this.langage && other.from === this.from && other.to === this.to;
+  }
+
+  toDOM() {
+    const pastille = document.createElement("span");
+    pastille.className = "cm-langage";
+    pastille.setAttribute("role", "button");
+    pastille.tabIndex = 0;
+    pastille.title = "Changer le langage de ce bloc";
+
+    const nom = document.createElement("span");
+    nom.className = "cm-langage__nom";
+    nom.textContent = this.langage ?? "Texte brut";
+    pastille.append(nom);
+
+    const fleche = document.createElement("span");
+    fleche.className = "cm-langage__fleche";
+    fleche.textContent = "▾";
+    pastille.append(fleche);
+
+    const ouvrir = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.onChoisir(this.from, this.to, this.langage);
+    };
+    pastille.onmousedown = ouvrir;
+    pastille.onkeydown = (event) => {
+      if (event.key === "Enter" || event.key === " ") ouvrir(event);
+    };
+    return pastille;
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+}

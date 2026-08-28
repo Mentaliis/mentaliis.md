@@ -8,6 +8,7 @@
  */
 
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { colorationDuCode, langagesConnus } from "./coloration";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, drawSelection, keymap, placeholder } from "@codemirror/view";
 import {
@@ -21,6 +22,7 @@ import { useDialog } from "../components/Dialog";
 import { api } from "../lib/api";
 import type { Note, NoteLinks } from "../lib/types";
 import { IconePanneau } from "../components/Icones";
+import { LanguagePicker } from "./LanguagePicker";
 import { InsertMenu } from "./InsertMenu";
 import type { Insertion } from "./insertions";
 import { lineHandle, type HoveredLine } from "./lineHandle";
@@ -142,8 +144,37 @@ export function NoteEditor({
   // reference plutot que dans les dependances evite de reconstruire l'editeur pour
   // rien : le reconstruire ramenait le curseur au debut du texte a chaque
   // enregistrement automatique.
-  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed, onTitle });
-  latest.current = { onSaved, refreshLinks, followLink, onRenamed, onTitle };
+  /** Le bloc dont on choisit le langage : ou le reecrire, et ou poser la liste. */
+  const [langage, setLangage] = useState<{
+    from: number;
+    to: number;
+    courant: string | null;
+    ancre: { x: number; y: number };
+  } | null>(null);
+
+  /**
+   * Ouvre le choix du langage pour un bloc de code.
+   *
+   * La liste se pose sous la pastille, la ou l'oeil est deja.
+   */
+  const choisirLangage = useCallback(
+    (from: number, to: number, courant: string | null) => {
+      const vue = view.current;
+      const place = vue?.coordsAtPos(from);
+      setLangage({
+        from,
+        to,
+        courant,
+        ancre: place
+          ? { x: Math.round(place.left), y: Math.round(place.bottom + 6) }
+          : { x: 200, y: 200 },
+      });
+    },
+    [],
+  );
+
+  const latest = useRef({ onSaved, refreshLinks, followLink, onRenamed, onTitle, choisirLangage });
+  latest.current = { onSaved, refreshLinks, followLink, onRenamed, onTitle, choisirLangage };
 
   useEffect(() => {
     if (!loaded || !host.current) return;
@@ -174,13 +205,24 @@ export function NoteEditor({
       keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
       // `markdownLanguage` en base : c'est lui qui apporte les tableaux,
       // les cases a cocher et le texte barre.
-      markdown({ base: markdownLanguage }),
+      //
+      // `codeLanguages` fait analyser le contenu des blocs clotures par
+      // l'analyseur du langage nomme apres les accents graves. La note reste un
+      // seul document : pas d'editeur imbrique par bloc, donc pas de curseur ni
+      // d'annulation a reconcilier, et l'affichage par fenetre de CodeMirror
+      // vaut pour l'ensemble.
+      markdown({ base: markdownLanguage, codeLanguages: langagesConnus }),
+      colorationDuCode(),
       // Taper « ## » devant un titre en change le niveau, sans jamais montrer le code.
       normaliseMarqueurs(),
       EditorView.lineWrapping,
       mentaliisTheme,
       // En lecture, la syntaxe ne se devoile jamais : la note reste consultative.
-      livePreview((target) => void latest.current.followLink(target), !readOnly),
+      livePreview(
+        (target) => void latest.current.followLink(target),
+        (from, to, courant) => latest.current.choisirLangage(from, to, courant),
+        !readOnly,
+      ),
       placeholder("Ecrivez ici. Tapez « # » pour un titre, « - [ ] » pour une case."),
     ];
 
@@ -474,7 +516,7 @@ export function NoteEditor({
             >
               +
             </button>
-            {inserting && (
+      {inserting && (
               <InsertMenu
                 onInsert={(item: Insertion) => {
                   setInserting(false);
@@ -541,6 +583,32 @@ export function NoteEditor({
           {note.tags.length > 1 ? "s" : ""}
         </span>
       </footer>
+
+      {langage && (
+        <LanguagePicker
+          courant={langage.courant}
+          ancre={langage.ancre}
+          onClose={() => setLangage(null)}
+          onChoisir={(choix) => {
+            const vue = view.current;
+            const cible = langage;
+            setLangage(null);
+            if (!vue) return;
+            // On ne reecrit que la ligne d'ouverture : le code lui-meme ne bouge
+            // pas d'un caractere, et le fichier reste du markdown standard.
+            const accents =
+              vue.state.sliceDoc(cible.from, cible.to).match(/^\s*`{3,}/)?.[0] ?? "```";
+            vue.dispatch({
+              changes: {
+                from: cible.from,
+                to: cible.to,
+                insert: choix ? `${accents}${choix.toLowerCase()}` : accents,
+              },
+            });
+            vue.focus();
+          }}
+        />
+      )}
     </section>
   );
 }

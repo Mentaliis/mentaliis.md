@@ -24,10 +24,12 @@ import {
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
+import { nomDuLangage } from "./coloration";
 import {
   CheckboxWidget,
   EmbedWidget,
   ImageWidget,
+  LanguageWidget,
   MathWidget,
   RuleWidget,
   TableWidget,
@@ -157,6 +159,7 @@ function buildInline(
   view: EditorView,
   reveal: boolean,
   blockField: BlockField,
+  onChoisirLangage: (from: number, to: number, courant: string | null) => void,
   hideLeadingTitle = false,
 ): DecorationSet {
   const { state } = view;
@@ -226,6 +229,32 @@ function buildInline(
           for (let number = first; number <= last; number += 1) {
             marks.push(Decoration.line({ class: lineClass }).range(state.doc.line(number).from));
           }
+        }
+
+        // Les trois accents graves ne se montrent jamais. Celui du haut cede la
+        // place a une pastille qui nomme le langage et permet d'en changer ;
+        // celui du bas s'efface avec sa ligne, qui n'a rien d'autre a dire.
+        if (name === "FencedCode") {
+          const ligneHaut = state.doc.lineAt(node.from);
+          const ligneBas = state.doc.lineAt(Math.min(node.to, state.doc.length));
+          const info = ligneHaut.text.replace(/^\s*`{3,}/, "").trim();
+          replace(
+            ligneHaut.from,
+            ligneHaut.to,
+            Decoration.replace({
+              widget: new LanguageWidget(
+                nomDuLangage(info),
+                ligneHaut.from,
+                ligneHaut.to,
+                onChoisirLangage,
+              ),
+            }),
+          );
+          // La ligne de fermeture n'existe que pour le fichier : on la replie.
+          if (ligneBas.number !== ligneHaut.number && /^\s*`{3,}\s*$/.test(ligneBas.text)) {
+            marks.push(Decoration.line({ class: "cm-code-fin" }).range(ligneBas.from));
+          }
+          // On laisse la descente se poursuivre : le contenu doit rester colore.
         }
 
         if (name === "HeaderMark" || name === "QuoteMark") {
@@ -358,6 +387,8 @@ function scanExtras(
 
 export function livePreview(
   onFollowLink: (target: string) => void,
+  /** Ouvre le choix du langage d'un bloc de code. */
+  onChoisirLangage: (from: number, to: number, courant: string | null) => void,
   /** Faux en lecture : le texte est alors purement consultatif, sans syntaxe. */
   reveal = true,
   /**
@@ -374,12 +405,12 @@ export function livePreview(
       decorations: DecorationSet;
 
       constructor(view: EditorView) {
-        this.decorations = buildInline(view, reveal, blockField, hideLeadingTitle);
+        this.decorations = buildInline(view, reveal, blockField, onChoisirLangage, hideLeadingTitle);
       }
 
       update(update: ViewUpdate) {
         if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildInline(update.view, reveal, blockField, hideLeadingTitle);
+          this.decorations = buildInline(update.view, reveal, blockField, onChoisirLangage, hideLeadingTitle);
         }
       }
     },

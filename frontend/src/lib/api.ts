@@ -20,6 +20,7 @@ import type {
   Scene,
   SceneImage,
   SceneLink,
+  Session,
   Settings,
   VaultInfo,
 } from "./types";
@@ -130,6 +131,13 @@ export const api = {
   // --- Portes ---
   createDoor: (parent: string, name: string) =>
     request<Door>("/door", { method: "POST", ...body({ parent, name }) }),
+  /** Ou l'on en etait la derniere fois dans ce Vault. */
+  session: () => request<Session>("/session"),
+
+  /** Retient l'endroit, les notes ouvertes, et celle que l'on lisait. */
+  saveSession: (session: Session) =>
+    request<Session>("/session", { method: "PUT", body: JSON.stringify(session) }),
+
   /** Tous les dossiers du Vault, pour choisir ou ranger un element. */
   folders: () => request<Folder[]>("/folders"),
 

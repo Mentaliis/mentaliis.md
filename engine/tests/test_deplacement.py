@@ -54,11 +54,44 @@ def test_l_icone_la_vision_et_le_cadrage_suivent(vault):
     assert (cadrage.x, cadrage.y, cadrage.scale) == (120.0, -40.0, 0.75)
 
 
-def test_les_traits_survivent_au_deplacement(vault):
+def test_les_traits_vers_l_ancien_endroit_sont_rompus(vault):
+    """Un trait dit « ceci va avec cela » dans une scene donnee.
+
+    Range ailleurs, l'element ne cotoie plus ce qu'il cotoyait : le trait ne
+    relierait plus que deux endroits sans rapport.
+    """
     vault.link("note.md", "Projets")
     vault.move_to("note.md", "Archives")
     relies = {tuple(sorted(pair)) for pair in vault.layout.links()}
-    assert ("Archives/note.md", "Projets") in relies
+    assert ("Archives/note.md", "Projets") not in relies
+    assert ("note.md", "Projets") not in relies
+
+
+def test_mais_les_traits_internes_suivent(vault):
+    """Ce qu'une porte emporte avec elle garde ses traits : ils ont un sens."""
+    (vault.root / "Projets" / "autre.md").write_text("# Autre" + chr(10), encoding="utf-8")
+    vault.link("Projets/plan.md", "Projets/autre.md")
+    vault.move_to("Projets", "Archives")
+    relies = {tuple(sorted(pair)) for pair in vault.layout.links()}
+    assert ("Archives/Projets/autre.md", "Archives/Projets/plan.md") in relies
+
+
+def test_l_icone_sa_taille_et_la_vision_survivent_au_deplacement(vault):
+    """Ce sont des attributs de l'element : ils ne dependent pas de l'endroit."""
+    reserve = vault.root / ".MEDIAS"
+    reserve.mkdir(exist_ok=True)
+    (reserve / "vision.png").write_bytes(bytes([0x89]) + b"PNG")
+
+    vault.set_icon("Projets", "cerveau")
+    vault.set_icon_size("Projets", 2)
+    vault.set_cover("Projets", ".MEDIAS/vision.png")
+
+    vault.move_to("Projets", "Archives")
+
+    porte = next(p for p in vault.scene("Archives").doors if p.id == "Archives/Projets")
+    assert porte.icon == "cerveau"
+    assert porte.icon_size == 2
+    assert porte.cover == ".MEDIAS/vision.png"
 
 
 def test_la_place_dans_la_scene_est_oubliee(vault):

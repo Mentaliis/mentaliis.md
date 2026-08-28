@@ -29,6 +29,7 @@ from ..config import (
 )
 from ..models import (
     Folder,
+    Session,
     AttachedImage,
     Camera,
     Constellation,
@@ -64,6 +65,9 @@ ASSETS_DIR = "Assets"
 
 #: Cle sous laquelle le Vault retient ses reglages propres.
 CONFIG = "@config"
+
+#: Cle sous laquelle il retient l'endroit ou l'on en etait.
+SESSION = "@session"
 
 #: Prefixe des images posees librement dans une scene. Elles ne sont pas des
 #: fichiers : ce sont des renvois vers la reserve, ranges dans le layout.
@@ -340,6 +344,28 @@ class Vault:
         if {"x", "y", "scale"} <= stored.keys():
             return Camera(x=stored["x"], y=stored["y"], scale=stored["scale"])
         return None
+
+    def session(self) -> Session:
+        """Ou l'on en etait la derniere fois dans ce Vault.
+
+        Rouvrir Mentaliis doit reprendre exactement la, pas au centre du Vault :
+        on rentre chez soi, on ne recommence pas la visite.
+        """
+        stored = self.layout.get(SESSION)
+        chemin = stored.get("path")
+        onglets = stored.get("tabs")
+        actif = stored.get("active")
+        return Session(
+            path=chemin if isinstance(chemin, str) else "",
+            tabs=[t for t in onglets if isinstance(t, str)] if isinstance(onglets, list) else [],
+            active=actif if isinstance(actif, str) else None,
+        )
+
+    def set_session(self, session: Session) -> None:
+        """Retient l'endroit, les notes ouvertes, et celle que l'on lisait."""
+        self.layout.set_field(SESSION, "path", session.path or None)
+        self.layout.set_field(SESSION, "tabs", session.tabs or None)
+        self.layout.set_field(SESSION, "active", session.active or None)
 
     def set_camera(self, path: str, camera: Camera) -> None:
         """Retient le cadrage : rouvrir une porte doit rendre la meme vue."""
@@ -679,10 +705,15 @@ class Vault:
         shutil.move(str(source), str(cible))
         new_id = self.relative(cible)
 
-        # La position, l'icone, la vision, le cadrage, les traits : tout suit.
+        # L'icone, sa taille, l'image de vision et le cadrage suivent l'element :
+        # ce sont ses attributs, ils ne dependent pas de l'endroit ou il se trouve.
         self.layout.rename(item_id, new_id)
         self.layout.rename(GLOBAL + item_id, GLOBAL + new_id)
         self.layout.rename(CAMERA + item_id, CAMERA + new_id)
+        # Les traits, eux, disent « ceci va avec cela » dans une scene donnee.
+        # Ce que l'element cotoyait n'est plus la : on rompt ce qui le reliait
+        # au dehors. Ce qui le reliait a son propre contenu reste.
+        self.layout.couper_les_liens_exterieurs(new_id)
         # Sauf la place dans la scene : l'ancienne n'a plus de sens ailleurs, et
         # l'element se poserait par-dessus ce qui s'y trouve deja.
         self.layout.set_field(new_id, "x", None)

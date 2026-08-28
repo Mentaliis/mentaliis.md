@@ -36,6 +36,7 @@ from ..models import (
     SetCoverRequest,
     Folder,
     MoveToRequest,
+    Session,
     SetIconRequest,
     SetIconSizeRequest,
     SetImagesRequest,
@@ -243,6 +244,19 @@ def post_door(payload: CreateDoorRequest):
 @router.put("/door/cover", response_model=Door)
 def put_door_cover(payload: SetCoverRequest, id: str = Query(...)):
     return _guard(_vault().set_cover, id, payload.cover)
+
+
+@router.get("/session", response_model=Session)
+def get_session():
+    """Ou l'on en etait la derniere fois dans ce Vault."""
+    return _guard(_vault().session)
+
+
+@router.put("/session", response_model=Session)
+def put_session(payload: Session) -> Session:
+    """Retient l'endroit, les notes ouvertes, et celle que l'on lisait."""
+    _guard(_vault().set_session, payload)
+    return payload
 
 
 @router.get("/folders", response_model=list[Folder])

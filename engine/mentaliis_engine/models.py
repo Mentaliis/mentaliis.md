@@ -114,6 +114,17 @@ class SceneResponse(BaseModel):
     camera: Camera | None = None
 
 
+class Session(BaseModel):
+    """Ou l'on en etait dans un Vault, pour y revenir tel quel."""
+
+    #: La porte ouverte ; la chaine vide designe la racine.
+    path: str = ""
+    #: Les notes ouvertes en onglets, dans l'ordre.
+    tabs: list[str] = Field(default_factory=list)
+    #: Celle que l'on lisait.
+    active: str | None = None
+
+
 class Folder(BaseModel):
     """Un dossier du Vault, tel qu'on le propose comme destination."""
 

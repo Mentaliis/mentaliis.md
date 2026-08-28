@@ -173,3 +173,13 @@ export interface Folder {
   /** Profondeur dans l'arborescence, pour l'indentation. */
   depth: number;
 }
+
+/** Ou l'on en etait dans un Vault, pour y revenir tel quel. */
+export interface Session {
+  /** La porte ouverte ; la chaine vide designe la racine. */
+  path: string;
+  /** Les notes ouvertes en onglets, dans l'ordre. */
+  tabs: string[];
+  /** Celle que l'on lisait. */
+  active: string | null;
+}

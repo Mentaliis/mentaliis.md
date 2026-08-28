@@ -535,11 +535,23 @@ code {
   filter: brightness(1.1);
 }
 
+/* Le nom deborde de l'element, et s'etale.
+
+   Un noeud fait 168 pixels de large ; un nom un peu long s'y repliait sur deux
+   ou trois lignes, avec un crochet tout seul sur la derniere. Il s'ecrit
+   desormais d'un trait, centre sous l'icone, et prend la largeur dont il a
+   besoin. La borne n'est la que pour qu'un nom interminable ne vienne pas
+   recouvrir ses voisins. */
 .node__label {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  width: max-content;
+  max-width: 360px;
   margin-top: 10px;
+  /* Le noeud fait 168 : on centre ce qui deborde de part et d'autre. */
+  margin-left: 50%;
+  translate: -50% 0;
   text-align: center;
 }
 
@@ -548,11 +560,15 @@ code {
   font-weight: 500;
   line-height: 1.3;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .node__meta {
   font-size: 11px;
   color: var(--text-faint);
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------- Une porte */

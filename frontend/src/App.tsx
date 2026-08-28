@@ -33,6 +33,9 @@ export default function App() {
   const [changingVault, setChangingVault] = useState(false);
   const [view, setView] = useState<View>("scene");
   const [path, setPath] = useState("");
+  /** Tant que la session precedente n'est pas relue, on ne charge rien : la
+   *  racine s'afficherait un instant avant de sauter a la bonne porte. */
+  const [sessionRelue, setSessionRelue] = useState(false);
   const [scene, setScene] = useState<Scene | null>(null);
   const [sky, setSky] = useState<Constellation | null>(null);
   const [tabs, setTabs] = useState<OpenNote[]>([]);
@@ -73,7 +76,35 @@ export default function App() {
 
         setEngine("pret");
         const existing = await api.getVault();
-        if (!cancelled && existing) setVault(existing);
+        if (cancelled) return;
+        if (existing) setVault(existing);
+        if (!existing) {
+          setSessionRelue(true);
+          return;
+        }
+        // On rentre chez soi : la porte ouverte, les notes qu'on lisait, et
+        // celle qui etait devant. Revenir au centre du Vault reviendrait a
+        // recommencer la visite a chaque lancement.
+        try {
+          const reprise = await api.session();
+          if (cancelled) return;
+          if (reprise.path) setPath(reprise.path);
+          if (reprise.tabs.length) {
+            // Le nom du fichier tient lieu de titre le temps que la note se
+            // charge : elle annonce ensuite le sien, et l'onglet se corrige.
+            setTabs(
+              reprise.tabs.map((id) => ({
+                id,
+                title: id.split("/").pop()?.replace(/\.md$/i, "") ?? id,
+              })),
+            );
+            setActive(reprise.active ?? reprise.tabs[0]);
+          }
+        } catch {
+          // Une session illisible ne doit pas empecher d'ouvrir le Vault.
+        } finally {
+          if (!cancelled) setSessionRelue(true);
+        }
       } catch {
         if (cancelled) return;
         if (++attempts > 20) setEngine("absent");
@@ -123,12 +154,25 @@ export default function App() {
   // La scene est toujours chargee : c'est elle qui alimente la bande de gauche
   // pendant l'ecriture, meme quand l'environnement n'est pas a l'ecran.
   useEffect(() => {
+    if (!sessionRelue) return;
     void loadScene();
-  }, [loadScene]);
+  }, [loadScene, sessionRelue]);
 
   useEffect(() => {
     if (view === "constellation") void loadSky();
   }, [loadSky, view]);
+
+  // On retient l'endroit un peu apres le dernier geste, pas a chaque clic :
+  // traverser trois portes ne doit pas ecrire trois fois sur le disque.
+  useEffect(() => {
+    if (!vault || !sessionRelue) return;
+    const minuterie = window.setTimeout(() => {
+      void api
+        .saveSession({ path, tabs: tabs.map((tab) => tab.id), active })
+        .catch(() => undefined);
+    }, 500);
+    return () => window.clearTimeout(minuterie);
+  }, [vault, sessionRelue, path, tabs, active]);
 
   const refresh = useCallback(() => {
     void loadScene();

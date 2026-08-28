@@ -148,6 +148,25 @@ class Layout:
             if changed:
                 self._save()
 
+    def couper_les_liens_exterieurs(self, item_id: str) -> None:
+        """Rompt les traits entre cet element et ce qui lui reste etranger.
+
+        Un trait dit « ceci va avec cela », dans une scene donnee. Quand on
+        range un element ailleurs, ce qu'il cotoyait n'est plus la : le trait
+        ne relierait plus que deux endroits sans rapport. Les traits internes,
+        eux — ceux qui relient l'element a ce qu'il emporte avec lui — gardent
+        tout leur sens et restent.
+        """
+        with self._lock:
+            gardes = {
+                pair
+                for pair in self._links
+                if _under(pair[0], item_id) == _under(pair[1], item_id)
+            }
+            if gardes != self._links:
+                self._links = gardes
+                self._save()
+
     def forget(self, item_id: str) -> None:
         """Oublie un element supprime, ainsi que tout ce qu'il contenait."""
         with self._lock:
